@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INMET — Painel de Avisos Meteorológicos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js"></script>
+<style>
+:root{
+    --bg:#0b1626;--bg-deep:#08111d;--surface:#112036;--surface-2:#172a44;--line:#22364f;--line-soft:#192b42;
+    --text:#e6edf6;--muted:#8ea3bb;--faint:#61768e;--accent:#86b6e8;--ink:#0b1626;
+    --sev-1:#f5c518;--sev-2:#ff7a1a;--sev-3:#f0322d;
+    --display:"IBM Plex Sans Condensed",Inter,system-ui,sans-serif;--body:Inter,system-ui,sans-serif;--rail:236px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}button{cursor:pointer}
+[hidden]{display:none !important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#243a55;border-radius:9px}::-webkit-scrollbar-track{background:transparent}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:12px;top:-60px;background:var(--accent);color:var(--ink);padding:8px 14px;border-radius:8px;z-index:99;font-weight:600}.skip:focus{top:12px}
+svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.13em}
+svg.lu{width:20px;height:20px;flex:none}
+
+/* ---------- Casca: barra lateral + conteúdo ---------- */
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100vh}
+.rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:24px 14px 20px;background:var(--bg-deep);border-right:1px solid var(--line-soft)}
+.brand{display:flex;align-items:center;gap:12px;padding:2px 10px 30px}
+.brand-mark{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);color:var(--accent)}
+.brand b{display:block;font:700 18px/1.1 var(--display);letter-spacing:.01em}
+.brand small{display:block;margin-top:3px;color:var(--muted);font-size:12.5px}
+.tabs{position:relative;display:flex;flex-direction:column;gap:2px}
+.tab-indicator{position:absolute;left:0;top:0;width:0;height:0;border-radius:11px;background:var(--surface);border:1px solid var(--line);transition:transform .3s cubic-bezier(.3,.8,.25,1),width .3s,height .3s;pointer-events:none}
+.tab{position:relative;z-index:1;display:flex;align-items:center;gap:12px;height:46px;padding:0 14px;border:0;border-radius:11px;background:transparent;color:var(--muted);font-weight:500;font-size:15px;text-align:left;transition:color .15s}
+.tab:hover,.tab[aria-selected="true"]{color:var(--text)}
+.tab[aria-selected="true"] svg{color:var(--accent)}
+.tab-count{margin-left:auto;min-width:26px;padding:1px 8px;border-radius:999px;background:var(--surface-2);font:600 13px/20px var(--display);text-align:center}
+.rail-note{margin:auto 0 0;padding:14px 10px 0;border-top:1px solid var(--line-soft);color:var(--faint);font-size:12.5px;line-height:1.55}
+.content{min-width:0}
+.topbar{display:flex;align-items:center;gap:20px;padding:26px 40px 0}
+.topbar h1{margin:0;font:700 30px/1.1 var(--display);letter-spacing:-.01em}
+.topbar p{margin:6px 0 0;color:var(--muted);font-size:14.5px}
+.topbar-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+.status{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13.5px;font-weight:500}
+.status-dot{width:9px;height:9px;border-radius:50%;background:#64748b}
+.status-dot.ok{background:#3ecf8e;box-shadow:0 0 0 4px rgba(62,207,142,.14)}.status-dot.error{background:var(--sev-3);box-shadow:0 0 0 4px rgba(240,50,45,.16)}
+.icon-btn{width:40px;height:40px;display:grid;place-items:center;border-radius:11px;border:1px solid var(--line);background:var(--surface);transition:background .15s}
+.icon-btn:hover{background:var(--surface-2)}.icon-btn.spin svg{animation:spin .8s linear infinite}
+main{padding:28px 40px 56px}
+.banner{display:flex;gap:12px;align-items:flex-start;margin-bottom:22px;padding:14px 18px;border:1px solid rgba(240,50,45,.45);border-radius:12px;background:rgba(240,50,45,.09);font-size:14px;line-height:1.5}
+.banner svg{color:var(--sev-3);margin-top:2px}
+.panel{animation:panelIn .22s ease-out}
+@keyframes panelIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 14px}
+.section-head h2{margin:0;font:600 20px/1.2 var(--display);letter-spacing:.005em}
+.link-btn{border:0;background:none;color:var(--accent);font-size:13.5px;font-weight:500;padding:4px 0}.link-btn:hover{text-decoration:underline}
+
+/* ---------- Visão geral ---------- */
+.sitrep{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:48px;align-items:end;padding:36px 40px;border:1px solid var(--line);border-radius:18px;overflow:hidden;
+    background:repeating-radial-gradient(circle at 104% -20%,transparent 0 34px,rgba(134,182,232,.055) 34px 35px),var(--surface)}
+.sitrep-number{font:700 96px/.9 var(--display);letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+.sitrep-text{margin:14px 0 0;font-size:19px;line-height:1.4;max-width:26ch}
+.sevbar{display:flex;gap:3px;height:14px;border-radius:7px;overflow:hidden;background:var(--line-soft)}
+.sevbar i{display:block;height:100%;border-radius:4px}
+.sev-legend{display:flex;flex-wrap:wrap;gap:12px 34px;margin-top:20px}
+.sev-legend div{display:flex;align-items:baseline;gap:9px}
+.sev-legend strong{font:700 32px/1 var(--display);font-variant-numeric:tabular-nums}
+.sev-legend span{color:var(--muted);font-size:13.5px}
+.ov-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:40px;margin-top:38px;align-items:start}
+.uf-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.uf-row{display:flex;align-items:center;gap:14px;padding:12px 16px 12px 12px;border:1px solid var(--line);border-left:3px solid var(--sev,var(--line));border-radius:12px;background:var(--surface);text-align:left;transition:background .15s,border-color .15s}
+.uf-row:hover{background:var(--surface-2);border-color:#2f4b6b;border-left-color:var(--sev,#2f4b6b)}
+.uf-row.zero{opacity:.55}
+.uf-flag{width:56px;height:40px;flex:none;object-fit:cover;object-position:center;border-radius:6px;background:#15263c;box-shadow:0 0 0 1px rgba(255,255,255,.09),0 6px 16px rgba(0,0,0,.4)}
+.uf-flag.broken{visibility:hidden}
+.uf-meta{min-width:0;display:flex;flex-direction:column}
+.uf-meta strong{font-size:15px;font-weight:600}
+.uf-meta span{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uf-count{margin-left:auto;text-align:right;line-height:1}
+.uf-count b{display:block;font:700 26px/1 var(--display);color:var(--sev,var(--faint));font-variant-numeric:tabular-nums}
+.uf-count small{color:var(--muted);font-size:11.5px}
+.ph-list{list-style:none;margin:0;padding:0;border-top:1px solid var(--line-soft)}
+.ph-list li{display:flex;align-items:center;gap:14px;padding:12px 2px;border-bottom:1px solid var(--line-soft)}
+.ph-list svg{width:34px;height:34px;flex:none}
+.ph-list strong{display:block;font-size:14.5px;font-weight:600}
+.ph-list small{color:var(--muted);font-size:12.5px}
+.ph-list b{margin-left:auto;font:700 22px/1 var(--display);font-variant-numeric:tabular-nums}
+
+/* ---------- Alertas ativos ---------- */
+.alerts-layout{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:28px;align-items:start}
+.list-col{position:sticky;top:18px;max-height:calc(100vh - 36px);display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.list-head{padding:16px 16px 14px;border-bottom:1px solid var(--line-soft)}
+.list-head label{display:block;margin-bottom:7px;color:var(--muted);font-size:13px;font-weight:500}
+.control{width:100%;height:42px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);outline:none}
+.control:focus{border-color:var(--accent)}
+.list-count{margin-top:12px;color:var(--muted);font-size:13px}.list-count b{color:var(--text);font:700 15px var(--display)}
+.list-scroll{overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+.al{display:flex;gap:12px;align-items:center;width:100%;padding:11px 12px;border:1px solid var(--line-soft);border-left:3px solid var(--sev);border-radius:11px;background:var(--bg);text-align:left;transition:background .15s,border-color .15s}
+.al:hover{background:var(--surface-2)}
+.al.selected{background:var(--surface-2);border-color:var(--sev)}
+.al-icon{width:46px;height:46px;flex:none;display:grid;place-items:center;border-radius:11px;background:rgba(255,255,255,.035)}
+.al-icon svg{width:36px;height:36px}
+.al-main{min-width:0;display:flex;flex-direction:column;gap:2px}
+.al-main strong{font-size:15px;font-weight:600}
+.al-sev{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--sev)}
+.al-sev::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--sev)}
+.al-where{color:var(--muted);font-size:12.5px;line-height:1.35}
+.empty{padding:34px 18px;text-align:center;color:var(--muted);font-size:14px;line-height:1.55}
+.empty strong{display:block;margin-bottom:4px;color:var(--text);font:600 17px var(--display)}
+.preview-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.preview-label strong{display:block;font:600 18px var(--display)}.preview-label span{color:var(--muted);font-size:13.5px}
+.preview-actions{display:flex;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:9px;height:42px;padding:0 16px;border:1px solid var(--line);border-radius:11px;background:var(--surface);font-weight:600;font-size:14px;transition:background .15s}
+.btn:hover{background:var(--surface-2)}
+.btn[aria-pressed="true"]{border-color:var(--accent);background:rgba(134,182,232,.14)}
+.btn-primary{border-color:var(--accent);background:var(--accent);color:var(--ink)}.btn-primary:hover{background:#a3c8ee}.btn:disabled{opacity:.6;cursor:wait}
+#alert-card-container{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#060d18}
+
+/* ---------- Mapa ---------- */
+.map-stage{min-height:520px;display:grid;place-items:center;padding:40px;border:1px dashed #2f4662;border-radius:18px;text-align:center;color:var(--muted);
+    background:repeating-radial-gradient(circle at 50% 120%,transparent 0 46px,rgba(134,182,232,.05) 46px 47px)}
+.map-stage svg{width:36px;height:36px;color:var(--accent);margin-bottom:10px}
+.map-stage h2{margin:0 0 6px;color:var(--text);font:600 22px var(--display)}.map-stage p{margin:0 auto;max-width:44ch}
+
+/* ---------- TEMPLATE DA IMAGEM ---------- */
+.mini-badge{width:54px;height:54px;flex:0 0 54px;border-radius:14px;font-size:0}
+#captureArea,.capture-frame{width:1080px;margin:0 auto;padding:30px;background:radial-gradient(circle at 100% 0%,rgba(37,99,235,.16),transparent 40%),linear-gradient(160deg,#0d1622,#060a10 62%);font-family:Inter,system-ui,sans-serif;color:#f6f8fb}
+.frame-top{display:flex;align-items:center;gap:16px;padding:0 6px 20px}
+.mark{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,#2563eb,#0f3fa8);font-size:30px;color:#fff}
+.frame-top b{display:block;font-size:17px;letter-spacing:.16em;font-weight:800}
+.frame-top small{display:block;margin-top:4px;color:#8296aa;font-size:13px}
+.frame-uf{margin-left:auto;text-align:right}
+.frame-uf strong{display:block;font-family:"JetBrains Mono",monospace;font-size:38px;line-height:1;font-weight:800}
+.frame-uf span{color:#8296aa;font-size:13px}
+.alert-art{--art-color:#ff7a1a;--art-soft:rgba(255,122,26,.13);position:relative;overflow:hidden;background:#090f17;border:1px solid #2a3a4e;border-radius:24px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.art-bar{height:12px;background:var(--art-color)}
+.art-header{padding:34px 42px 30px;background:radial-gradient(circle at 96% 0%,var(--art-soft),transparent 46%),linear-gradient(180deg,rgba(255,255,255,.03),transparent)}
+.art-head-row{display:flex;align-items:center;gap:32px}
+.art-badge{width:184px;height:184px;flex:0 0 184px;border-radius:44px;display:grid;place-items:center}
+.art-head-text{flex:1;min-width:0}
+.art-severity{display:inline-block;padding:7px 16px;border-radius:999px;background:var(--art-color);color:#0b1119;font-size:17px;font-weight:900;letter-spacing:.12em}
+.art-title{margin-top:14px;color:#fff;font-size:50px;line-height:1.05;font-weight:800;letter-spacing:-.035em}
+.art-place{margin-top:8px;color:#c4d0dc;font-size:22px;font-weight:600}
+.art-summary{margin-top:14px;color:var(--art-color);font-size:23px;font-weight:800;line-height:1.25}
+.gauge{margin-top:26px;display:flex;align-items:center;gap:18px;padding:14px 18px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid #243346}
+.gauge-bars{display:flex;gap:7px;width:190px;flex:0 0 190px}
+.gauge-bars i{flex:1;height:14px;border-radius:7px;background:#1d2937}
+.gauge-bars i.on{background:var(--art-color)}
+.gauge-text{font-size:17px;color:#e2eaf2;line-height:1.35}
+.art-period{display:grid;grid-template-columns:1.15fr 1.15fr .8fr;gap:14px;margin-top:20px}
+.period-card{padding:16px 20px;border:1px solid #273546;border-radius:14px;background:rgba(255,255,255,.03)}
+.period-label{color:#8296aa;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.period-day{margin-top:8px;font-size:21px;font-weight:700;color:#dfe8f1}
+.period-time{font-family:"JetBrains Mono",monospace;font-size:42px;font-weight:800;line-height:1.1;color:#fff}
+.period-dur{margin-top:14px;font-family:"JetBrains Mono",monospace;font-size:32px;font-weight:800;color:var(--art-color)}
+.art-body{padding:8px 42px 34px}
+.info-section{margin-top:30px}
+.info-title{display:flex;align-items:center;gap:12px;margin-bottom:14px;color:var(--art-color);font-size:16px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
+.info-title::after{content:"";height:2px;flex:1;background:#1d2937}
+.expect{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.expect li{position:relative;padding:14px 18px 14px 44px;border-radius:12px;background:rgba(255,255,255,.035);color:#e6edf4;font-size:20px;line-height:1.4}
+.expect li::before{content:"";position:absolute;left:18px;top:24px;width:10px;height:10px;border-radius:50%;background:var(--art-color)}
+.expect li.risk{background:var(--art-soft);border:1px solid var(--art-color)}
+.expect b{color:#fff}.expect b.num{color:var(--art-color);font-weight:800}
+.official{padding:18px 22px;border:2px solid var(--art-color);border-radius:14px;background:var(--art-soft);margin-bottom:14px}
+.official small{display:block;color:var(--art-color);font-size:13px;font-weight:900;letter-spacing:.14em}
+.official div{margin-top:6px;font-size:22px;font-weight:700;line-height:1.35;color:#fff}
+.do-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.do-card{display:flex;align-items:center;gap:16px;padding:16px 18px;border:1px solid #273546;border-radius:14px;background:rgba(255,255,255,.03);font-size:20px;font-weight:600;line-height:1.3;color:#f0f5fa}
+.do-card i{flex:0 0 40px;height:40px;border-radius:50%;background:var(--art-color);color:#0b1119;display:grid;place-items:center;font-style:normal;font-weight:900;font-size:20px}
+.call-grid{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr;gap:12px}
+.call{padding:16px 18px;border-radius:16px;border:1px solid #2a3b50;background:rgba(255,255,255,.035)}
+.call strong{display:block;font-family:"JetBrains Mono",monospace;font-size:52px;line-height:1;font-weight:800;color:#fff}
+.call b{display:block;margin-top:8px;font-size:19px;font-weight:800;color:#fff}
+.call span{display:block;margin-top:4px;font-size:13.5px;line-height:1.35;color:#9fb0c1}
+.call.main{background:var(--art-color);border-color:var(--art-color)}
+.call.main strong,.call.main b{color:#0b1119}.call.main span{color:rgba(11,17,25,.78)}
+.area-grid{display:flex;flex-wrap:wrap;gap:9px}
+.area-chip{padding:9px 15px;border:1px solid #34495f;border-radius:10px;background:var(--art-soft);color:#f0f5fa;font-size:17px;font-weight:700}
+.area-note{margin-top:12px;color:#93a5b8;font-size:14px;line-height:1.5}
+.mun-list{color:#b3c1d0;font-size:14px;line-height:1.7}
+.alert-footer{padding:18px 42px 20px;border-top:1px solid #1b2734;display:flex;justify-content:space-between;align-items:center;gap:20px;color:#8598ac;font-size:13px;line-height:1.55}
+.alert-footer strong{color:#c0cdda}
+.frame-bottom{padding:16px 6px 0;color:#71849a;font-size:13px;display:flex;justify-content:space-between}
+.art-empty{padding:110px 40px;text-align:center;color:#8598ac;font-size:20px}
+
+
+/* ---------- BANDEIRA DO ESTADO (cabeçalho, canto superior direito) ---------- */
+.frame-state{margin-left:auto;display:flex;align-items:center;gap:18px}
+.frame-state-name{text-align:right}
+.frame-state-name span{display:block;color:#8296aa;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.frame-state-name strong{display:block;margin-top:3px;font-size:26px;font-weight:800;line-height:1.1;letter-spacing:-.02em}
+.flag-box{height:80px;min-width:80px;max-width:150px;flex:none;border-radius:12px;overflow:hidden;background:#142033;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 28px rgba(0,0,0,.5),0 0 0 2px rgba(255,255,255,.18)}
+.flag-box img.flag{height:80px;width:auto;max-width:150px;display:block}
+.flag-box .flag-fallback{padding:0 18px}
+.flag-fallback{font-family:"JetBrains Mono",monospace;font-size:34px;font-weight:800;color:#dbe6f2}
+
+/* ---------- MODO SIMPLES (.minimalist-mode em #captureArea) ---------- */
+.secondary-btn[aria-pressed="true"]{border-color:#2563eb;background:rgba(37,99,235,.2);color:#fff}
+.min-only{display:none}
+.minimalist-mode .min-only{display:block}
+.minimalist-mode .adv{display:none !important}
+.minimalist-mode .art-header{padding:44px 44px 40px}
+.minimalist-mode .art-badge{width:230px;height:230px;flex:0 0 230px;border-radius:54px}
+.minimalist-mode .art-badge svg{width:190px;height:190px}
+.minimalist-mode .art-head-row{gap:38px}
+.minimalist-mode .art-title{font-size:66px}
+.minimalist-mode .art-place{font-size:26px}
+.minimalist-mode .art-summary{font-size:32px;color:#fff;margin-top:18px}
+.minimalist-mode .min-until{margin-top:20px;font-size:24px;font-weight:600;color:#c4d0dc}
+.minimalist-mode .min-until b{color:var(--art-color)}
+.minimalist-mode .art-body{padding:0 44px 40px}
+.risk-text{padding:22px 26px;border-left:5px solid var(--art-color);border-radius:0 16px 16px 0;background:rgba(255,255,255,.04);font-size:24px;line-height:1.5;color:#e9eff5}
+.risk-text b{color:#fff}.risk-text b.num{color:var(--art-color)}
+.minimalist-mode .do-card,.minimalist-mode .official div{font-size:24px}
+.minimalist-mode .area-chip{font-size:21px;padding:11px 18px}
+
+.loading{display:inline-flex;align-items:center;gap:8px}
+.spinner{width:13px;height:13px;border:2px solid #334155;border-top-color:#60a5fa;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:1180px){.ov-grid{grid-template-columns:1fr}.sitrep{grid-template-columns:1fr;gap:28px}}
+@media(max-width:980px){
+    .shell{display:block}
+    .rail{position:fixed;left:0;right:0;bottom:0;top:auto;height:auto;flex-direction:row;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--line);z-index:30}
+    .brand,.rail-note{display:none}.tabs{flex-direction:row;width:100%;gap:4px}
+    .tab{flex:1;flex-direction:column;justify-content:center;gap:3px;height:56px;padding:0 6px;font-size:12px;text-align:center}
+    .tab-count{position:absolute;top:4px;right:calc(50% - 26px);margin:0;padding:0 6px;font-size:11px;line-height:17px;min-width:0}
+    .topbar{padding:20px 18px 0;flex-wrap:wrap}.topbar h1{font-size:25px}.status span:last-of-type{display:none}.status{padding:0 12px}
+    main{padding:20px 18px 110px}
+    .alerts-layout{grid-template-columns:1fr}.list-col{position:static;max-height:380px}
+    .sitrep{padding:26px 22px}.sitrep-number{font-size:72px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Pular para o conteúdo</a>
+<div class="shell">
+    <aside class="rail">
+        <div class="brand">
+            <div class="brand-mark" data-icon="radar"></div>
+            <div><b>Avisos INMET</b><small>Monitor meteorológico</small></div>
+        </div>
+        <nav class="tabs" id="tabs" role="tablist" aria-label="Seções do painel" aria-orientation="vertical">
+            <span class="tab-indicator" id="tabIndicator"></span>
+            <button class="tab" role="tab" id="tab-overview" data-tab="overview" aria-controls="panel-overview" aria-selected="true"><span data-icon="layout-dashboard"></span><span>Visão geral</span></button>
+            <button class="tab" role="tab" id="tab-alerts" data-tab="alerts" aria-controls="panel-alerts" aria-selected="false" tabindex="-1"><span data-icon="bell-ring"></span><span>Alertas ativos</span><span class="tab-count" id="tabCount">0</span></button>
+            <button class="tab" role="tab" id="tab-map" data-tab="map" aria-controls="panel-map" aria-selected="false" tabindex="-1"><span data-icon="map"></span><span>Mapa</span></button>
+        </nav>
+        <p class="rail-note">Dados oficiais do Instituto Nacional de Meteorologia. Só aparecem os avisos que estão em vigor neste momento.</p>
+    </aside>
+
+    <div class="content">
+        <header class="topbar">
+            <div><h1 id="pageTitle">Visão geral</h1><p id="pageSub"></p></div>
+            <div class="topbar-actions">
+                <div class="status" role="status"><span id="statusDot" class="status-dot"></span><span id="statusTitle">Conectando ao INMET</span><span id="statusDescription" class="sr-only"></span></div>
+                <button class="icon-btn" id="refreshButton" type="button" title="Atualizar agora" aria-label="Atualizar avisos"></button>
+            </div>
+        </header>
+
+        <main id="main">
+            <div class="banner" id="banner" role="alert" hidden><span data-icon="triangle-alert"></span><span id="bannerText"></span></div>
+
+            <!-- VISÃO GERAL -->
+            <section class="panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+                <div class="sitrep">
+                    <div><div class="sitrep-number" id="kpiTotal">–</div><p class="sitrep-text" id="sitrepText">Consultando o INMET…</p></div>
+                    <div><div class="sevbar" id="sevBar" aria-hidden="true"></div><div class="sev-legend" id="sevLegend"></div></div>
+                </div>
+                <div class="ov-grid">
+                    <section aria-labelledby="h-states">
+                        <div class="section-head"><h2 id="h-states">Estados com avisos</h2><button class="link-btn" id="toggleAllStates" type="button">Mostrar todos os estados</button></div>
+                        <div class="uf-list" id="stateGrid"></div>
+                    </section>
+                    <aside aria-labelledby="h-ph">
+                        <div class="section-head"><h2 id="h-ph">Fenômenos em vigor</h2></div>
+                        <ul class="ph-list" id="phenomList"></ul>
+                    </aside>
+                </div>
+            </section>
+
+            <!-- ALERTAS ATIVOS -->
+            <section class="panel" id="panel-alerts" role="tabpanel" aria-labelledby="tab-alerts" hidden>
+                <div class="alerts-layout">
+                    <div class="list-col">
+                        <div class="list-head">
+                            <label for="stateSelect">Estado</label>
+                            <select id="stateSelect" class="control"></select>
+                            <div class="list-count"><b id="sidebarResultCount">0 avisos</b> em vigor agora</div>
+                        </div>
+                        <div class="list-scroll" id="sidebarAlertList"></div>
+                    </div>
+                    <div class="preview-col">
+                        <div class="preview-bar">
+                            <div class="preview-label"><strong>Pré-visualização</strong><span id="previewStateLabel">Nenhum alerta selecionado</span></div>
+                            <div class="preview-actions">
+                                <button id="modeButton" class="btn" type="button" aria-pressed="false" title="Versão limpa da imagem, para o público leigo"></button>
+                                <button id="downloadButton" class="btn btn-primary" type="button"></button>
+                            </div>
+                        </div>
+                        <!-- Contêiner do card. O card pronto é injetado em #captureArea (estrutura e CSS do card inalterados). -->
+                        <div id="alert-card-container"><div id="captureArea"></div></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MAPA (área preparada) -->
+            <section class="panel" id="panel-map" role="tabpanel" aria-labelledby="tab-map" hidden>
+                <div id="map-container" class="map-stage">
+                    <div><span data-icon="map"></span><h2>Mapa em preparação</h2><p>Aqui entra o mapa do Brasil, com cada estado colorido pelo aviso mais grave em vigor. Enquanto isso, veja a situação por estado na Visão geral.</p></div>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<script>
+/* =====================================================================
+   FONTES OFICIAIS (dados reais)
+   1) Lista:   /avisos/rss        -> todos os avisos, com evento, severidade,
+                                     período, descrição e áreas (mesorregiões)
+   2) Detalhe: /avisos/rss/{id}   -> aviso CAP completo: instruções, cor de risco,
+                                     estados, todos os municípios, emissão, contato
+===================================================================== */
+const RSS_URL = "https://apiprevmet3.inmet.gov.br/avisos/rss";
+const DETAIL_URL = id => `https://apiprevmet3.inmet.gov.br/avisos/rss/${id}`;
+
+/* Servidor local incluso (server.js): resolve o bloqueio de CORS de vez.
+   Rode "node server.js" e abra http://localhost:3000 — o painel usa
+   /api/inmet automaticamente quando não está aberto como arquivo (file://). */
+const SAME_ORIGIN_PROXY = location.protocol === "file:" ? "" : "/api/inmet?url=";
+const PUBLIC_PROXIES = [
+    ["allorigins", u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u)],
+    ["corsproxy", u => "https://corsproxy.io/?url=" + encodeURIComponent(u)],
+    ["codetabs", u => "https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(u)],
+    ["thingproxy", u => "https://thingproxy.freeboard.io/fetch/" + u]
+];
+const TZ = "America/Sao_Paulo";
+
+/* ---------------- Ícones (SVG próprio, sem raios/tempestades) ---------------- */
+const I = (d, cls = "i") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+const UI_CLOUD = '<path d="M7 16a4 4 0 0 1-.6-7.96A5.5 5.5 0 0 1 17.2 8.6 3.7 3.7 0 0 1 17.5 16"/>';
+const ICON = {
+    heat:  '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/><path d="M18 5h3M18 9h3M18 13h3"/>',
+    dry:   '<path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z"/><path d="M9.5 15.5a2.6 2.6 0 0 0 2.5 2"/>',
+    rain:  UI_CLOUD + '<path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2"/>',
+    storm: UI_CLOUD + '<circle cx="8" cy="20" r=".9"/><circle cx="12" cy="21" r=".9"/><circle cx="16" cy="20" r=".9"/><path d="M9 12.5h6"/>',
+    wind:  '<path d="M3 8h10.5a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 12h15a3 3 0 1 1-3 3"/><path d="M3 16h6"/>',
+    coast: '<path d="M3 8h9a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 12h12"/><path d="M2 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/>',
+    cold:  '<path d="M12 2v20M4.2 7l15.6 10M4.2 17L19.8 7"/><path d="M9.5 3.8L12 6l2.5-2.2M9.5 20.2L12 18l2.5 2.2"/>',
+    info:  '<path d="M12 3l9.5 17H2.5z"/><path d="M12 10v4.5M12 17.5h.01"/>',
+    logo:  '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/><path d="M12 12L19 6"/>',
+    refresh:'<path d="M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4"/>',
+    download:'<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/>',
+    pin:   '<path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.800 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/>',
+    doc:   '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
+    shield:'<path d="M12 3l8 3v6c0 4.500-3.300 8-8 9-4.700-1-8-4.500-8-9V6z"/><path d="M9 12l2.200 2.200L15.500 10"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    eye:   '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>'
+};
+/* ---------------- Lucide (ISC — https://lucide.dev): ícones da interface ---------------- */
+const LUCIDE = {
+    "radar": `<path d="M19.07 4.93A10 10 0 0 0 6.99 3.34" /><path d="M4 6h.01" /><path d="M2.29 9.62A10 10 0 1 0 21.31 8.35" /><path d="M16.24 7.76A6 6 0 1 0 8.23 16.67" /><path d="M12 18h.01" /><path d="M17.99 11.66A6 6 0 0 1 15.77 16.67" /><circle cx="12" cy="12" r="2" /><path d="m13.41 10.59 5.66-5.66" />`,
+    "layout-dashboard": `<rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" />`,
+    "bell-ring": `<path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M22 8c0-2.3-.8-4.3-2-6" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /><path d="M4 2C2.8 3.7 2 5.7 2 8" />`,
+    "map": `<path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /><path d="M15 5.764v15" /><path d="M9 3.236v15" />`,
+    "refresh-cw": `<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" />`,
+    "download": `<path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" />`,
+    "eye": `<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" />`,
+    "triangle-alert": `<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" />`,
+    "map-pin": `<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" />`,
+    "clock": `<circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />`,
+    "circle-check": `<circle cx="12" cy="12" r="10" /><path d="m16 9-5.5 5.5L8 12" />`,
+    "wifi-off": `<path d="M12 20h.01" /><path d="M8.5 16.429a5 5 0 0 1 7 0" /><path d="M5 12.859a10 10 0 0 1 5.17-2.69" /><path d="M19 12.859a10 10 0 0 0-2.007-1.523" /><path d="M2 8.82a15 15 0 0 1 4.177-2.643" /><path d="M22 8.82a15 15 0 0 0-11.288-3.764" /><path d="m2 2 20 20" />`,
+    "layers": `<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" /><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12" /><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17" />`
+};
+const L = name => `<svg class="lu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LUCIDE[name] || ""}</svg>`;
+const hydrateIcons = () => document.querySelectorAll("[data-icon]").forEach(el => { el.innerHTML = L(el.dataset.icon); el.style.display = "contents"; });
+
+/* ---------------- Ícones ilustrados (preenchidos, na cor do nível do aviso) ---------------- */
+const DARK = "#0b1119";
+const mix = (hex, t) => { const n = parseInt(hex.slice(1), 16); const f = c => Math.round(c + (255 - c) * t); return "#" + [n >> 16, (n >> 8) & 255, n & 255].map(f).map(v => v.toString(16).padStart(2, "0")).join(""); };
+const S = (d, c, w = 5.5) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const CLOUD = (c, y = 0) => `<g transform="translate(0 ${y})" fill="${c}"><circle cx="22" cy="30" r="10"/><circle cx="35" cy="23" r="13"/><circle cx="47" cy="32" r="9"/><rect x="13" y="30" width="42" height="12" rx="6"/></g>`;
+const DROP = (x, y, c) => `<path transform="translate(${x} ${y})" fill="${c}" d="M0-6C3-2 5 1 5 3.5a5 5 0 0 1-10 0C-5 1-3-2 0-6z"/>`;
+const BALL = (x, y, c, r = 3.6) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`;
+const THERMO = (c, l) => `<rect x="12" y="8" width="14" height="36" rx="7" fill="${c}"/><circle cx="19" cy="48" r="11" fill="${c}"/><rect x="17" y="22" width="4" height="26" rx="2" fill="${l}"/><circle cx="19" cy="48" r="5.5" fill="${l}"/>`;
+const SUN = (cx, cy, c) => `<circle cx="${cx}" cy="${cy}" r="8" fill="${c}"/>` + [...Array(8)].map((_, i) => { const t = i * Math.PI / 4, x = Math.cos(t), y = Math.sin(t); return S(`M${(cx + x * 12).toFixed(1)} ${(cy + y * 12).toFixed(1)}L${(cx + x * 16).toFixed(1)} ${(cy + y * 16).toFixed(1)}`, c, 3.5); }).join("");
+const ART = {
+    rain:  (c, l) => CLOUD(c, -2) + DROP(20, 51, l) + DROP(32, 57, l) + DROP(44, 51, l),
+    accum: (c, l) => CLOUD(c, -8) + DROP(22, 42, l) + DROP(34, 45, l) + DROP(46, 42, l) + S("M6 58q6.5-7 13 0t13 0 13 0 13 0", l, 4.5),
+    storm: (c, l) => CLOUD(c, -4) + DROP(17, 50, l) + BALL(27, 52, mix(c, .9)) + BALL(37, 49, mix(c, .9)) + BALL(33, 58, mix(c, .9)) + DROP(48, 51, l),
+    hail:  (c, l) => CLOUD(c, -4) + [[20, 50], [32, 50], [44, 50], [26, 58], [38, 58]].map(([x, y]) => BALL(x, y, mix(c, .9), 4)).join(""),
+    wind:  (c, l) => S("M6 22h32a8 8 0 1 0-8-8", c) + S("M6 34h44a9 9 0 1 1-9 9", l) + S("M6 46h20a7 7 0 1 1-7 7", c),
+    tornado: (c, l) => [[8, 8, 48, 7, c], [13, 19, 38, 7, l], [18, 30, 28, 7, c], [23, 41, 18, 7, l], [28, 52, 8, 6, c]].map(([x, y, w, h, f]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${f}"/>`).join("") + BALL(57, 22, l, 2.6) + BALL(8, 36, l, 2.2),
+    coast: (c, l) => S("M8 16h26a6.5 6.5 0 1 0-6.500-6.500", l) + S("M8 27h18", l) + S("M4 42q7-9 14 0t14 0 14 0 14 0", c) + S("M4 56q7-9 14 0t14 0 14 0 14 0", l),
+    heat:  (c, l) => THERMO(c, l) + SUN(44, 20, c) + S("M34 42q4-5 8 0t8 0 8 0", l, 3.5) + S("M34 52q4-5 8 0t8 0 8 0", l, 3.5),
+    dry:   (c, l) => `<path d="M32 5C32 5 14 25 14 40a18 18 0 0 0 36 0C50 25 32 5 32 5z" fill="${c}"/>` + S("M21 41a11 11 0 0 0 6 10", l, 3) + S("M32 25v18M25 37l7 8 7-8", DARK, 4.5),
+    cold:  (c, l) => [0, 60, 120].map(r => `<g transform="rotate(${r} 32 32)">${S("M32 6v52", c, 4.5)}${S("M26 12l6 6 6-6M26 52l6-6 6 6", c, 4.5)}</g>`).join("") + BALL(32, 32, l, 5),
+    tempdrop: (c, l) => THERMO(c, l) + S("M46 12v32M37 36l9 10 9-10", l, 5.5),
+    fog:   (c, l) => CLOUD(c, -4) + S("M8 47h34M50 47h6", l, 4.5) + S("M14 56h42", l, 4.5),
+    info:  (c, l) => `<path d="M32 5l21 8v17c0 14-9 24-21 29C20 54 11 44 11 30V13z" fill="${c}"/>` + S("M32 19v18", DARK) + BALL(32, 46, DARK, 3.4)
+};
+/* =====================================================================
+   MÓDULO: ÍCONES METEOCONS  (MIT — https://meteocons.com)
+   Pacotes: @meteocons/svg (ANIMADOS, animação SMIL nativa do SVG) e
+            @meteocons/svg-static (fallback para ícones sem versão animada).
+   Estilo "monochrome": todo o desenho usa UMA cor marcador (@C).
+   iconSvg() troca @C pela cor do NÍVEL do aviso (amarelo/laranja/vermelho),
+   então o ícone herda a severidade automaticamente.
+   Os ids internos (clip-path) recebem sufixo único para várias cópias
+   do mesmo ícone poderem conviver na página sem conflito.
+===================================================================== */
+const METEO = {
+    rain: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="rain" clip-path="url(#clip0_2038_14032)"><g id="Sky"><g id="Clouds"><g id="Cloud"><path id="Cloud_2" fill-rule="evenodd" clip-rule="evenodd" d="M54.8371 48.2115C59.8274 40.138 70.2648 36.824 79.0085 40.4823C87.7416 44.136 92.6836 53.8827 90.3886 63.0856C97.6828 62.7671 104 68.7067 104 76.0281C104 83.1158 98.0476 89 90.9767 89C89.8721 89 88.9767 88.104 88.9767 86.9986C88.9767 85.8933 89.8721 84.9973 90.9767 84.9973C95.8637 84.9973 100 80.8799 100 76.0281C100 71.0262 95.6222 66.8637 90.5629 67.0846L87.8866 67.2014C87.2562 67.229 86.6497 66.9571 86.2505 66.4681C85.8513 65.979 85.7062 65.3301 85.859 64.7174L86.5076 62.1165C88.3201 54.8484 84.391 47.0727 77.4656 44.1752C70.5248 41.2713 62.1886 43.9272 58.239 50.3171L57.2003 51.9975C56.6245 52.9291 55.4074 53.2244 54.4692 52.6602L52.7767 51.6424C49.8116 49.8592 45.9319 49.9664 43.071 51.9105C40.2208 53.8474 38.7096 57.3922 39.2918 60.7745L39.6259 62.7154C39.8113 63.7924 39.0991 64.819 38.026 65.0218L36.092 65.3872C31.1421 66.3225 27.5723 71.0441 28.0437 76.0307C28.5153 81.0207 32.91 84.9983 37.9519 84.9973C39.0565 84.997 39.9521 85.8929 39.9524 86.9982C39.9526 88.1035 39.0573 88.9998 37.9528 89C30.8695 89.0015 24.7294 83.4755 24.0614 76.4076C23.3936 69.3412 28.3907 62.7689 35.3499 61.454C34.4997 56.5148 36.6828 51.4131 40.8239 48.5991C44.9752 45.7781 50.5363 45.625 54.8371 48.2115Z" fill="@C"/></g><animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></g></g><g id="Precipitation"><g id="Raindrops"><path id="Raindrop 1" d="M52 83V95" stroke="@C" stroke-width="4" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0;0 20" dur="1s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 1 1"/><animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0s" repeatCount="indefinite" keyTimes="0;0.15;0.85;1"/></path><path id="Raindrop 2" d="M64 83V95" stroke="@C" stroke-width="4" stroke-linecap="round" opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;0 20" dur="1s" begin="0.4s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 1 1"/><animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0.4s" repeatCount="indefinite" keyTimes="0;0.15;0.85;1"/></path><path id="Raindrop 3" d="M76 83V95" stroke="@C" stroke-width="4" stroke-linecap="round" opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;0 20" dur="1s" begin="0.8s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 1 1"/><animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0.8s" repeatCount="indefinite" keyTimes="0;0.15;0.85;1"/></path></g></g></g><defs><clipPath id="clip0_2038_14032"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`,
+    accum: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="raindrop-measure"><path id="Ruler" d="M84 34H92V94H84M86 64H92M88 78H92M88 48H92" stroke="@C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path id="Background" d="M64.5 36.7256C69.8794 44.8684 74.2649 51.5266 77.375 57.4219C80.7179 63.7585 82.5 69.0537 82.5 74.1748C82.5 84.32 74.4219 92.5 64.5 92.5C54.5793 92.5 46.5 84.2963 46.5 74.1748C46.5 69.0667 48.2817 63.7779 51.625 57.4404C54.7354 51.5445 59.1202 44.8799 64.5 36.7256Z" stroke="@C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g id="Mask group"><mask id="mask0_2038_25610" style="mask-type:alpha" maskUnits="userSpaceOnUse"><rect id="Water Level" x="45" y="64" width="39" height="30" fill="@C"><animate attributeName="y" values="64;56;64" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/><animate attributeName="height" values="30;38;30" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></rect></mask><g mask="url(#mask0_2038_25610)"><g transform="translate(64.5,64.0)"><path id="Raindrop" d="M64.5 34C52.6294 52 45 63.25 45 74.175C45 85.1 53.7262 94 64.5 94C75.2738 94 84 85.125 84 74.175C84 63.225 76.3706 51.975 64.5 34Z" fill="@C" transform="translate(-64.5,-64.0)"/><animateTransform attributeName="transform" type="scale" values="1 1;1.1 1.1;1 1" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1" additive="sum"/></g></g></g></g></svg>`,
+    storm: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="thunderstorms-rain" clip-path="url(#clip0_2038_14329)"><g id="Sky"><g id="Clouds"><g id="Cloud"><path id="Cloud_2" fill-rule="evenodd" clip-rule="evenodd" d="M54.837 48.2115C59.8272 40.138 70.2646 36.824 79.0084 40.4823C87.7415 44.136 92.6835 53.8827 90.3884 63.0856C97.6827 62.7671 104 68.7067 104 76.0281C104 83.1158 98.0475 89 90.9766 89C89.872 89 88.9766 88.104 88.9766 86.9986C88.9766 85.8933 89.872 84.9973 90.9766 84.9973C95.8636 84.9973 99.9999 80.8799 99.9999 76.0281C99.9999 71.0262 95.6221 66.8637 90.5628 67.0846L87.8865 67.2014C87.2561 67.229 86.6496 66.9571 86.2504 66.4681C85.8512 65.979 85.706 65.3301 85.8588 64.7174L86.5075 62.1165C88.32 54.8484 84.3908 47.0727 77.4654 44.1752C70.5247 41.2713 62.1884 43.9272 58.2389 50.3171L57.2002 51.9975C56.6244 52.9291 55.4073 53.2244 54.4691 52.6602L52.7766 51.6424C49.8115 49.8592 45.9317 49.9664 43.0709 51.9105C40.2206 53.8474 38.7095 57.3922 39.2917 60.7745L39.6258 62.7154C39.8112 63.7924 39.099 64.819 38.0259 65.0218L36.0919 65.3872C31.142 66.3225 27.5722 71.0441 28.0435 76.0307C28.5152 81.0207 32.9099 84.9983 37.9518 84.9973C39.0564 84.997 39.952 85.8929 39.9522 86.9982C39.9525 88.1035 39.0572 88.9998 37.9527 89C30.8694 89.0015 24.7293 83.4755 24.0613 76.4076C23.3934 69.3412 28.3905 62.7689 35.3498 61.454C34.4996 56.5148 36.6827 51.4131 40.8237 48.5991C44.975 45.7781 50.5361 45.625 54.837 48.2115Z" fill="@C"/></g><animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></g></g><g id="Precipitation"><g id="Raindrops"><path id="Raindrop 1" d="M52 83V95" stroke="@C" stroke-width="4" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0;0 20" dur="1s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 1 1"/><animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0s" repeatCount="indefinite" keyTimes="0;0.15;0.85;1"/></path><path id="Raindrop 2" d="M64 83V95" stroke="@C" stroke-width="4" stroke-linecap="round" opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;0 20" dur="1s" begin="0.4s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 1 1"/><animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0.4s" repeatCount="indefinite" keyTimes="0;0.15;0.85;1"/></path><path id="Raindrop 3" d="M76 83V95" stroke="@C" stroke-width="4" stroke-linecap="round" opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;0 20" dur="1s" begin="0.8s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 1 1"/><animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0.8s" repeatCount="indefinite" keyTimes="0;0.15;0.85;1"/></path></g></g><g id="Lightning"><path id="Lightning Bolt" d="M60.0003 68L52 90.9092H60.0003L55.9995 110L76 83.2728H63.9996L71.9999 68H60.0003Z" fill="@C"><animate attributeName="opacity" values="1;1;0;1;0;1;0;1;1" dur="2s" begin="0s" repeatCount="indefinite" keyTimes="0;0.25;0.33;0.42;0.5;0.57;0.63;0.67;1"/></path></g></g><defs><clipPath id="clip0_2038_14329"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`,
+    hail: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="hail" clip-path="url(#clip0_2038_14098)"><g id="Sky"><g id="Clouds"><g id="Cloud"><path id="Cloud_2" fill-rule="evenodd" clip-rule="evenodd" d="M54.8371 48.2115C59.8274 40.138 70.2648 36.824 79.0085 40.4823C87.7416 44.136 92.6836 53.8827 90.3886 63.0856C97.6828 62.7671 104 68.7067 104 76.0281C104 83.1158 98.0476 89 90.9767 89C89.8721 89 88.9767 88.104 88.9767 86.9986C88.9767 85.8933 89.8721 84.9973 90.9767 84.9973C95.8637 84.9973 100 80.8799 100 76.0281C100 71.0262 95.6222 66.8637 90.5629 67.0846L87.8866 67.2014C87.2562 67.229 86.6497 66.9571 86.2505 66.4681C85.8513 65.979 85.7062 65.3301 85.859 64.7174L86.5076 62.1165C88.3201 54.8484 84.391 47.0727 77.4656 44.1752C70.5248 41.2713 62.1886 43.9272 58.239 50.3171L57.2003 51.9975C56.6245 52.9291 55.4074 53.2244 54.4692 52.6602L52.7767 51.6424C49.8116 49.8592 45.9319 49.9664 43.071 51.9105C40.2208 53.8474 38.7096 57.3922 39.2918 60.7745L39.6259 62.7154C39.8113 63.7924 39.0991 64.819 38.026 65.0218L36.092 65.3872C31.1421 66.3225 27.5723 71.0441 28.0437 76.0307C28.5153 81.0207 32.91 84.9983 37.9519 84.9973C39.0565 84.997 39.9521 85.8929 39.9524 86.9982C39.9526 88.1035 39.0573 88.9998 37.9528 89C30.8695 89.0015 24.7294 83.4755 24.0614 76.4076C23.3936 69.3412 28.3907 62.7689 35.3499 61.454C34.4997 56.5148 36.6828 51.4131 40.8239 48.5991C44.9752 45.7781 50.5363 45.625 54.8371 48.2115Z" fill="@C"/></g><animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></g></g><g id="Precipitation"><g id="Ice balls"><path id="Ice Ball 1" d="M52 86C51.4067 86 50.8266 86.1759 50.3333 86.5056C49.8399 86.8352 49.4554 87.3038 49.2283 87.852C49.0013 88.4001 48.9419 89.0033 49.0577 89.5853C49.1734 90.1672 49.4591 90.7018 49.8787 91.1213C50.2983 91.5409 50.8329 91.8266 51.4148 91.9424C51.9968 92.0581 52.5998 91.9987 53.148 91.7716C53.6961 91.5446 54.1647 91.1601 54.4944 90.6667C54.824 90.1734 55 89.5933 55 89C55 88.2044 54.6839 87.4413 54.1213 86.8787C53.5587 86.3161 52.7957 86 52 86Z" fill="@C"><animateTransform attributeName="transform" type="translate" values="0 0;0 20" dur="1s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 1 1"/><animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0s" repeatCount="indefinite" keyTimes="0;0.15;0.85;1"/></path><path id="Ice Ball 2" d="M64 86C63.4067 86 62.8266 86.1759 62.3333 86.5056C61.8399 86.8352 61.4554 87.3038 61.2283 87.852C61.0013 88.4001 60.9419 89.0033 61.0577 89.5853C61.1734 90.1672 61.4591 90.7018 61.8787 91.1213C62.2983 91.5409 62.8329 91.8266 63.4148 91.9424C63.9968 92.0581 64.5998 91.9987 65.148 91.7716C65.6961 91.5446 66.1647 91.1601 66.4944 90.6667C66.824 90.1734 67 89.5933 67 89C67 88.2044 66.6839 87.4413 66.1213 86.8787C65.5587 86.3161 64.7957 86 64 86Z" fill="@C" opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;0 20" dur="1s" begin="0.3s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 1 1"/><animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0.3s" repeatCount="indefinite" keyTimes="0;0.15;0.85;1"/></path><path id="Ice Ball 3" d="M76 86C75.4067 86 74.8266 86.1759 74.3333 86.5056C73.8399 86.8352 73.4554 87.3038 73.2283 87.852C73.0013 88.4001 72.9419 89.0033 73.0577 89.5853C73.1734 90.1672 73.4591 90.7018 73.8787 91.1213C74.2983 91.5409 74.8329 91.8266 75.4148 91.9424C75.9968 92.0581 76.5998 91.9987 77.148 91.7716C77.6961 91.5446 78.1647 91.1601 78.4944 90.6667C78.824 90.1734 79 89.5933 79 89C79 88.2044 78.6839 87.4413 78.1213 86.8787C77.5587 86.3161 76.7957 86 76 86Z" fill="@C" opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;0 20" dur="1s" begin="0.6s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 1 1"/><animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0.6s" repeatCount="indefinite" keyTimes="0;0.15;0.85;1"/></path></g></g></g><defs><clipPath id="clip0_2038_14098"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`,
+    wind: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="wind"><g id="Wind"><path id="Wind Line 1" d="M87.79 40.1352C93.9756 33.347 105 38.4049 105 47.4463C105 53.2746 100.522 58 95 58H24" stroke="@C" stroke-width="4" stroke-miterlimit="10" stroke-linecap="round" stroke-dasharray="50"><animate attributeName="stroke-dashoffset" values="0;1000" dur="6s" begin="0s" repeatCount="indefinite"/></path><path id="Wind Line 1_2" d="M60.1281 87.868C66.4202 94.5186 78 89.8717 78 80.5556C78 74.7263 73.3503 70 67.6154 70C61.8805 70 24 70 24 70" stroke="@C" stroke-width="4" stroke-miterlimit="10" stroke-linecap="round" stroke-dasharray="50"><animate attributeName="stroke-dashoffset" values="0;1000" dur="6s" begin="0.2s" repeatCount="indefinite"/></path></g></g></svg>`,
+    tornado: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="tornado"><path id="Line 5" d="M56 90H72" stroke="@C" stroke-width="4" stroke-miterlimit="10" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0;2 0;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></path><path id="Line 4" d="M47 77H81" stroke="@C" stroke-width="4" stroke-miterlimit="10" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0;4 0;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></path><path id="Line 3" d="M42 64H87" stroke="@C" stroke-width="4" stroke-miterlimit="10" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0;6 0;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></path><path id="Line 2" d="M37 51H91" stroke="@C" stroke-width="4" stroke-miterlimit="10" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0;8 0;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></path><path id="Line 1" d="M32 38H96" stroke="@C" stroke-width="4" stroke-miterlimit="10" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0;10 0;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></path></g></svg>`,
+    cyclone: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="cyclone" clip-path="url(#clip0_3112_28760)"><g id="Cyclone"><path id="Vector" fill-rule="evenodd" clip-rule="evenodd" d="M51.7521 37.4075C44.7798 42.1344 40.0426 49.0195 38.577 57.2804L38.4449 58.2976C35.4219 55.1279 33.0058 52.173 30.7014 48.3407C30.321 47.7081 29.9672 47.0747 29.6123 46.4394C29.3904 46.0423 29.1682 45.6445 28.9388 45.2456C28.9118 45.1862 28.8723 45.095 28.8246 44.9849C28.6193 44.5111 28.2627 43.6882 28.1034 43.5515C27.9251 43.7744 28.0214 44.7157 28.0693 45.1835C28.076 45.2489 28.0817 45.305 28.0856 45.3486C28.0477 46.6834 28.4797 50.3353 28.6779 51.6839C29.9072 60.0511 32.4302 68.5989 37.1189 75.6818C41.8648 82.8513 48.5614 87.7233 57.0085 89.3498C57.4329 89.4315 57.8564 89.5059 58.2791 89.5727C55.1164 92.5875 52.1655 94.9987 48.3407 97.2986C47.7081 97.679 47.0747 98.0328 46.4394 98.3877C46.0423 98.6096 45.6445 98.8318 45.2457 99.0612C45.1862 99.0882 45.095 99.1277 44.9849 99.1754C44.5111 99.3807 43.6882 99.7373 43.5515 99.8966C43.7744 100.075 44.7157 99.9786 45.1835 99.9307C45.2489 99.924 45.305 99.9183 45.3486 99.9144C46.6834 99.9523 50.3353 99.5203 51.6839 99.3221C60.0511 98.0928 68.5989 95.5698 75.6818 90.8811C82.8513 86.1352 87.7233 79.4386 89.3498 70.9915L89.5 69.6019C92.8305 72.707 95.8993 77.0098 98.1306 80.9254L98.1852 81.0211C98.8782 82.2369 99.5494 83.4145 99.9702 84.7599C100.086 83.3915 99.8389 80.335 99.6819 78.9282C98.6318 69.5221 95.9294 59.624 90.5925 51.7521C85.8656 44.7798 78.9805 40.0426 70.7196 38.577C70.3751 38.5159 70.0314 38.4594 69.6885 38.4075C72.7866 35.1127 77.046 32.08 80.9254 29.8694L81.0211 29.8148C82.2369 29.1218 83.4145 28.4506 84.7599 28.0298C83.3915 27.9143 80.335 28.1611 78.9282 28.3181C69.5221 29.3682 59.624 32.0706 51.7521 37.4075ZM64 77C71.1797 77 77 71.1797 77 64C77 56.8203 71.1797 51 64 51C56.8203 51 51 56.8203 51 64C51 71.1797 56.8203 77 64 77Z" fill="@C"/></g></g><defs><clipPath id="clip0_3112_28760"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`,
+    coast: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="wind-onshore" clip-path="url(#clip0_2049_7153)"><g id="Shore"><g id="Tree"><path id="Branch" d="M78.9649 60.3853C78.5891 60.7146 78.1581 60.9824 77.6875 61.1729L79.75 64.7452L81.049 63.9952L78.9649 60.3853Z" fill="@C"/><path id="Trunk" d="M84.8721 58.6212C84.7089 58.6652 84.5442 58.7056 84.3781 58.7422L83.7776 59.7822L83.7486 58.8617C83.1792 58.9527 82.5951 58.9999 82 58.9999C81.2748 58.9999 80.5661 58.9298 79.8801 58.7959L79.5008 70.8374C79.4941 71.0386 79.528 71.239 79.6003 71.4268C79.6727 71.6146 79.7821 71.786 79.9221 71.9306C80.0621 72.0752 80.2297 72.1902 80.415 72.2687C80.6003 72.3472 80.7996 72.3876 81.0008 72.3874H82.6383C82.8396 72.3876 83.0388 72.3472 83.2241 72.2687C83.4095 72.1902 83.5771 72.0752 83.7171 71.9306C83.857 71.786 83.9665 71.6146 84.0388 71.4268C84.1105 71.241 84.1443 71.0427 84.1385 70.8437C84.1384 70.8402 84.1356 70.8374 84.1321 70.8374C84.1286 70.8374 84.1257 70.8347 84.1256 70.8312L83.8717 62.7694C83.8688 62.6763 83.8919 62.5843 83.9385 62.5036L85.8924 59.1194C85.5348 58.9852 85.1935 58.8179 84.8721 58.6212Z" fill="@C"/><path id="Branch Canopy" d="M78.8439 59.0405C76.5238 58.3468 74.5252 56.9079 73.1262 55.0016C72.7315 55.5682 72.5 56.2571 72.5 57C72.5 58.933 74.067 60.5 76 60.5C77.1716 60.5 78.2087 59.9244 78.8439 59.0405Z" fill="@C"/><path id="Main Canopy" d="M91.9869 49.0161C91.9956 48.8452 92 48.6731 92 48.5C92 42.9772 87.5228 38.5 82 38.5C76.4772 38.5 72 42.9772 72 48.5C72 54.0228 76.4772 58.5 82 58.5C82.7952 58.5 83.5687 58.4072 84.3104 58.2318C82.9041 57.1337 82 55.4224 82 53.5C82 50.1863 84.6863 47.5 88 47.5C89.5304 47.5 90.927 48.073 91.9869 49.0161Z" fill="@C"/><circle id="Side Canopy" cx="88" cy="53.5" r="5" fill="@C"/></g><g id="Mask group"><mask id="mask0_2049_7153" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="34" y="71" width="27" height="27"><path id="Mask" d="M60.7574 71H34V98H45C45 86.4197 51.3497 76.3225 60.7574 71Z" fill="@C"/></mask><g mask="url(#mask0_2049_7153)"><g transform="translate(64.0,98.0)"><g id="Water" transform="translate(-64.0,-98.0)"><path id="Water_2" d="M34 78.5C34 77.5557 34.4446 76.6666 35.2 76.1L40.0748 72.4439C41.1997 71.6003 42.7596 71.6511 43.8272 72.5661L47.0476 75.3265C48.1711 76.2895 49.8289 76.2895 50.9524 75.3265L54.1728 72.5661C55.2404 71.6511 56.8003 71.6003 57.9252 72.4439L62.2 75.65C63.2667 76.45 64.7333 76.45 65.8 75.65L70.0748 72.4439C71.1997 71.6003 72.7596 71.6511 73.8272 72.5661L77.0476 75.3265C78.1711 76.2895 79.8289 76.2895 80.9524 75.3265L84.1728 72.5661C85.2404 71.6511 86.8003 71.6003 87.9252 72.4439L92.8 76.1C93.5554 76.6666 94 77.5557 94 78.5V92C94 95.3137 91.3137 98 88 98H40C36.6863 98 34 95.3137 34 92V78.5Z" fill="@C"/></g><animateTransform attributeName="transform" type="scale" values="1 1;1 1.08;1 1" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1" additive="sum"/></g></g></g><path id="Shore_2" d="M49 98C49 83.0883 61.0883 71 76 71H88C91.3137 71 94 73.6863 94 77V92C94 95.3137 91.3137 98 88 98H49Z" fill="@C"/></g><g id="Wind"><path id="Wind Line 1" d="M59.3511 41.8436C62.1003 38.9344 67 41.1021 67 44.977C67 47.4748 65.01 49.5 62.5556 49.5H31" stroke="@C" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round" stroke-dasharray="50"><animate attributeName="stroke-dashoffset" values="0;1000" dur="6s" begin="0s" repeatCount="indefinite"/></path><path id="Wind Line 1_2" d="M47.0569 63.1577C49.8534 66.008 55 64.0165 55 60.0238C55 57.5256 52.9335 55.5 50.3846 55.5C47.8358 55.5 31 55.5 31 55.5" stroke="@C" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round" stroke-dasharray="50"><animate attributeName="stroke-dashoffset" values="0;1000" dur="6s" begin="0.2s" repeatCount="indefinite"/></path></g></g><defs><clipPath id="clip0_2049_7153"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`,
+    heat: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="thermometer-sun" clip-path="url(#clip0_2038_26390)"><g id="Thermometer Mercury"><circle id="Reservoir" cx="64" cy="83" r="9" fill="@C"/><rect id="Value" x="61" y="50" width="6" height="29" rx="3" fill="@C"><animateTransform attributeName="transform" type="translate" values="0 0;0 -2;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></rect></g><g id="Thermometer Glass" clip-path="url(#clip1_2038_26390)"><g id="Mask group"><mask id="mask0_2038_26390" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128"><path id="Mask" fill-rule="evenodd" clip-rule="evenodd" d="M128 0H0V128H128V0ZM46.0001 83.201C46.0049 93.0892 54.0942 101 64 101C73.9059 101 81.9952 93.0892 82 83.201C82.0104 80.3211 81.3089 77.4859 79.9608 74.9352C78.9537 73.0296 77.6093 71.3272 76 69.9014V38.779C76 35.6183 74.7077 32.6105 72.4454 30.4107C70.1869 28.2146 67.147 27 64 27C60.853 27 57.8131 28.2146 55.5547 30.4107C53.2924 32.6105 52.0001 35.6183 52.0001 38.779V69.9014C50.3908 71.3272 49.0464 73.0296 48.0393 74.9352C46.6912 77.4859 45.9897 80.3211 46.0001 83.201Z" fill="@C"/></mask><g mask="url(#mask0_2038_26390)"><g id="Sun"><circle id="Core" cx="78" cy="52" r="9" fill="@C"/><g id="Rays"><path d="M76.6875 32.3125C76.6875 31.5876 77.2751 31 78 31C78.7249 31 79.3125 31.5876 79.3125 32.3125V38.4375C79.3125 39.1624 78.7249 39.75 78 39.75C77.2751 39.75 76.6875 39.1624 76.6875 38.4375V32.3125Z" fill="@C"/><path d="M90.9931 37.1508C91.5056 36.6382 92.3367 36.6382 92.8492 37.1508C93.3618 37.6633 93.3618 38.4943 92.8492 39.0069L88.5182 43.3379C88.0056 43.8505 87.1746 43.8505 86.6621 43.3379C86.1495 42.8254 86.1495 41.9944 86.6621 41.4818L90.9931 37.1508Z" fill="@C"/><path d="M97.6875 50.6875C98.4124 50.6875 99 51.2751 99 52C99 52.7249 98.4124 53.3125 97.6875 53.3125H91.5625C90.8376 53.3125 90.25 52.7249 90.25 52C90.25 51.2751 90.8376 50.6875 91.5625 50.6875H97.6875Z" fill="@C"/><path d="M92.8492 64.9931C93.3618 65.5057 93.3618 66.3367 92.8492 66.8492C92.3367 67.3618 91.5056 67.3618 90.9931 66.8492L86.6621 62.5182C86.1495 62.0057 86.1495 61.1746 86.6621 60.6621C87.1746 60.1495 88.0057 60.1495 88.5182 60.6621L92.8492 64.9931Z" fill="@C"/><path d="M76.6875 65.5625C76.6875 64.8376 77.2751 64.25 78 64.25C78.7249 64.25 79.3125 64.8376 79.3125 65.5625V71.6875C79.3125 72.4124 78.7249 73 78 73C77.2751 73 76.6875 72.4124 76.6875 71.6875V65.5625Z" fill="@C"/><path d="M67.4818 60.6621C67.9943 60.1495 68.8254 60.1495 69.3379 60.6621C69.8505 61.1746 69.8505 62.0056 69.3379 62.5182L65.0069 66.8492C64.4943 67.3618 63.6633 67.3618 63.1508 66.8492C62.6382 66.3367 62.6382 65.5056 63.1508 64.9931L67.4818 60.6621Z" fill="@C"/><path d="M64.4375 50.6875C65.1624 50.6875 65.75 51.2751 65.75 52C65.75 52.7249 65.1624 53.3125 64.4375 53.3125H58.3125C57.5876 53.3125 57 52.7249 57 52C57 51.2751 57.5876 50.6875 58.3125 50.6875H64.4375Z" fill="@C"/><path d="M69.3379 41.4818C69.8505 41.9944 69.8505 42.8254 69.3379 43.3379C68.8254 43.8505 67.9944 43.8505 67.4818 43.3379L63.1508 39.0069C62.6382 38.4944 62.6382 37.6633 63.1508 37.1508C63.6633 36.6382 64.4944 36.6382 65.0069 37.1508L69.3379 41.4818Z" fill="@C"/><animateTransform attributeName="transform" type="rotate" values="0 78.0 52.0;360 78.0 52.0" dur="6s" begin="0s" repeatCount="indefinite"/></g></g></g></g><path id="Glass" d="M51 83.1904C50.9954 81.1383 51.4971 79.1133 52.4648 77.2861C53.4327 75.4587 54.8395 73.8802 56.5683 72.6865C56.8385 72.4998 56.9999 72.1927 57 71.8643V38.7793C57 36.9906 57.7302 35.2687 59.04 33.9951C60.3507 32.7206 62.1346 32 64 32C65.8654 32 67.6492 32.7206 68.9599 33.9951C70.2697 35.2687 71 36.9906 71 38.7793V41.5469H65C64.4477 41.5469 64 41.9946 64 42.5469C64 43.0991 64.4477 43.5469 65 43.5469H71V49.3262H65C64.4477 49.3262 64 49.7739 64 50.3262C64.0001 50.8784 64.4478 51.3262 65 51.3262H71V57.1045H65C64.4479 57.1045 64.0002 57.5524 64 58.1045C64 58.6568 64.4477 59.1045 65 59.1045H71V71.8398C71 72.1684 71.1612 72.4764 71.4316 72.6631C73.1637 73.8589 74.572 75.4399 75.54 77.2715C76.508 79.1029 77.0083 81.1324 77 83.1885V83.1924C76.9999 90.2607 71.2102 96 64 96C56.7897 96 51 90.2607 51 83.1924V83.1904Z" stroke="@C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g></g><defs><clipPath id="clip0_2038_26390"><rect width="128" height="128" fill="white"/></clipPath><clipPath id="clip1_2038_26390"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`,
+    dry: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="humidity"><g transform="translate(64.5,64.0)"><g id="Raindrop" transform="translate(-64.5,-64.0)"><path id="Vector" d="M64.5 34C52.6294 52 45 63.25 45 74.175C45 85.1 53.7262 94 64.5 94C75.2738 94 84 85.125 84 74.175C84 63.225 76.3706 51.975 64.5 34Z" fill="@C"/><path id="Label" d="M59.8673 73.936C59.0193 74.88 57.8353 75.352 56.3153 75.352C54.7793 75.352 53.5953 74.872 52.7633 73.912C51.9313 72.984 51.5153 71.648 51.5153 69.904C51.5153 68.16 51.9313 66.824 52.7633 65.896C53.5953 64.968 54.7793 64.504 56.3153 64.504C57.8513 64.504 59.0353 64.968 59.8673 65.896C60.6833 66.84 61.0913 68.176 61.0913 69.904C61.0913 71.664 60.6833 73.008 59.8673 73.936ZM60.2993 82.36H57.3233L68.6033 64.552H71.5553L60.2993 82.36ZM54.3953 69.928C54.3953 71.96 55.0353 72.976 56.3153 72.976C57.5953 72.976 58.2353 71.96 58.2353 69.928C58.2353 67.912 57.5953 66.904 56.3153 66.904C55.0353 66.904 54.3953 67.912 54.3953 69.928ZM76.2353 80.944C75.4033 81.904 74.2193 82.384 72.6833 82.384C71.1473 82.384 69.9713 81.904 69.1553 80.944C68.3233 80.016 67.9073 78.68 67.9073 76.936C67.9073 75.192 68.3233 73.856 69.1553 72.928C69.9713 72 71.1473 71.536 72.6833 71.536C74.2193 71.536 75.4033 72 76.2353 72.928C77.0513 73.872 77.4593 75.208 77.4593 76.936C77.4593 78.68 77.0513 80.016 76.2353 80.944ZM72.6833 73.936C71.4033 73.936 70.7633 74.944 70.7633 76.96C70.7633 78.976 71.4033 79.984 72.6833 79.984C73.9633 79.984 74.6033 78.976 74.6033 76.96C74.6033 74.944 73.9633 73.936 72.6833 73.936Z" fill="white"/></g><animateTransform attributeName="transform" type="scale" values="1 1;1.1 1.1;1 1" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1" additive="sum"/></g></g></svg>`,
+    cold: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="snowflake" clip-path="url(#clip0_2038_25657)"><g id="Snowflake"><path id="Snowflake_2" fill-rule="evenodd" clip-rule="evenodd" d="M81.0501 68.0606L88.1859 72.1818H88.2163C90.7653 73.4436 91.7382 76.7317 90.3259 79.1662C88.8975 81.6285 85.5474 82.3797 83.206 80.8182L76.0399 76.697C74.049 78.5683 71.6468 79.9486 69.0256 80.7273V89C69.0256 91.7277 66.7399 94 64.0153 94C61.2907 94 59.0051 91.7277 59.0051 89V80.7576C56.3618 80.0095 53.9428 78.6256 51.9604 76.7273L44.8246 80.8485C42.4648 82.2071 39.3277 81.3511 37.9773 79.0152C36.6141 76.6572 37.4785 73.5266 39.8143 72.1818L46.9198 68.0303C46.287 65.3703 46.287 62.5994 46.9198 59.9394L39.784 55.8182C37.2349 54.5564 36.262 51.2683 37.6744 48.8338C39.1028 46.3715 42.4528 45.6203 44.7942 47.1818L51.93 51.303C53.9272 49.4176 56.3402 48.0267 58.9747 47.2424V39C58.9747 36.2723 61.2604 34 63.9849 34C66.7095 34 68.9952 36.2723 68.9952 39V47.2424C71.6351 47.9984 74.0523 49.3813 76.0399 51.2727L83.1757 47.1515C85.5392 45.7907 88.6573 46.6224 90.023 48.9848C91.3883 51.3466 90.5487 54.4578 88.1859 55.8182L81.0501 59.9697C81.6829 62.6297 81.6829 65.4006 81.0501 68.0606ZM64.0001 72C68.4184 72 72.0001 68.4183 72.0001 64C72.0001 59.5817 68.4184 56 64.0001 56C59.5819 56 56.0001 59.5817 56.0001 64C56.0001 68.4183 59.5819 72 64.0001 72Z" fill="@C"/><animateTransform attributeName="transform" type="rotate" values="-6 64.0 64.0;6 64.0 64.0;-6 64.0 64.0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></g></g><defs><clipPath id="clip0_2038_25657"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`,
+    tempdrop: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="thermometer-colder" clip-path="url(#clip0_2038_26375)"><g id="Thermometer Mercury"><circle id="Reservoir" cx="64" cy="83" r="9" fill="@C"/><rect id="Value" x="61" y="50" width="6" height="29" rx="3" fill="@C"><animateTransform attributeName="transform" type="translate" values="0 0;0 -2;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></rect></g><g id="Thermometer Glass"><path id="Glass" d="M51 83.1904C50.9954 81.1383 51.4971 79.1133 52.4648 77.2861C53.4327 75.4587 54.8395 73.8802 56.5683 72.6865C56.8385 72.4998 56.9999 72.1927 57 71.8643V38.7793C57 36.9906 57.7302 35.2687 59.04 33.9951C60.3507 32.7206 62.1346 32 64 32C65.8654 32 67.6492 32.7206 68.9599 33.9951C70.2697 35.2687 71 36.9906 71 38.7793V41.5469H65C64.4477 41.5469 64 41.9946 64 42.5469C64 43.0991 64.4477 43.5469 65 43.5469H71V49.3262H65C64.4477 49.3262 64 49.7739 64 50.3262C64.0001 50.8784 64.4478 51.3262 65 51.3262H71V57.1045H65C64.4479 57.1045 64.0002 57.5524 64 58.1045C64 58.6568 64.4477 59.1045 65 59.1045H71V71.8398C71 72.1684 71.1612 72.4764 71.4316 72.6631C73.1637 73.8589 74.572 75.4399 75.54 77.2715C76.508 79.1029 77.0083 81.1324 77 83.1885V83.1924C76.9999 90.2607 71.2102 96 64 96C56.7897 96 51 90.2607 51 83.1924V83.1904Z" stroke="@C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><g id="Arrows"><path id="Arrow 3" d="M92.6678 45.0029C92.3175 45.0011 91.98 45.1403 91.7253 45.3916L86.0012 51.0841L80.2761 45.3889C80.0204 45.139 79.6834 45 79.3333 45C78.9832 45 78.6462 45.139 78.3905 45.3889C78.2673 45.5088 78.169 45.654 78.1019 45.8153C78.0347 45.9767 78 46.1507 78 46.3267C78 46.5026 78.0347 46.6767 78.1019 46.8381C78.169 46.9994 78.2673 47.1446 78.3905 47.2646L85.0571 53.897C85.3128 54.1469 85.6499 54.2859 86 54.2859C86.3501 54.2859 86.6871 54.1469 86.9428 53.897L93.6094 47.2646C93.7327 47.1446 93.8309 46.9994 93.8981 46.8381C93.9653 46.6767 93.9999 46.5026 93.9999 46.3267C93.9999 46.1507 93.9653 45.9767 93.8981 45.8153C93.8309 45.654 93.7327 45.5088 93.6094 45.3889C93.3546 45.1388 93.0175 45.0006 92.6678 45.0029Z" fill="@C"><animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 0" dur="2s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></path><path id="Arrow 2" d="M92.6678 53.36C92.3175 53.3583 91.98 53.4975 91.7253 53.7488L86.0012 59.4413L80.2761 53.746C80.0204 53.4962 79.6834 53.3572 79.3333 53.3572C78.9832 53.3572 78.6462 53.4962 78.3905 53.746C78.2673 53.866 78.169 54.0112 78.1019 54.1725C78.0347 54.3339 78 54.5079 78 54.6839C78 54.8598 78.0347 55.0339 78.1019 55.1952C78.169 55.3566 78.2673 55.5018 78.3905 55.6217L85.0571 62.2542C85.3128 62.5041 85.6499 62.6431 86 62.6431C86.3501 62.6431 86.6871 62.5041 86.9428 62.2542L93.6094 55.6217C93.7327 55.5018 93.8309 55.3566 93.8981 55.1952C93.9653 55.0339 93.9999 54.8598 93.9999 54.6839C93.9999 54.5079 93.9653 54.3339 93.8981 54.1725C93.8309 54.0112 93.7327 53.866 93.6094 53.746C93.3546 53.496 93.0175 53.3578 92.6678 53.36Z" fill="@C"><animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 0" dur="2s" begin="0.3s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></path><path id="Arrow 1" d="M92.6678 61.7172C92.3175 61.7155 91.98 61.8547 91.7253 62.106L86.0012 67.7984L80.2761 62.1032C80.0204 61.8534 79.6834 61.7144 79.3333 61.7144C78.9832 61.7144 78.6462 61.8534 78.3905 62.1032C78.2673 62.2232 78.169 62.3683 78.1019 62.5297C78.0347 62.691 78 62.8651 78 63.0411C78 63.217 78.0347 63.3911 78.1019 63.5524C78.169 63.7138 78.2673 63.859 78.3905 63.9789L85.0571 70.6114C85.3128 70.8612 85.6499 71.0002 86 71.0002C86.3501 71.0002 86.6871 70.8612 86.9428 70.6114L93.6094 63.9789C93.7327 63.859 93.8309 63.7138 93.8981 63.5524C93.9653 63.3911 93.9999 63.217 93.9999 63.0411C93.9999 62.8651 93.9653 62.691 93.8981 62.5297C93.8309 62.3683 93.7327 62.2232 93.6094 62.1032C93.3546 61.8531 93.0175 61.715 92.6678 61.7172Z" fill="@C"><animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 0" dur="2s" begin="0.6s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></path></g></g></g><defs><clipPath id="clip0_2038_26375"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`,
+    fog: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="fog" clip-path="url(#clip0_2038_14230)"><g id="Sky"><g id="Clouds"><g id="Cloud"><path id="Cloud_2" fill-rule="evenodd" clip-rule="evenodd" d="M54.8371 48.2115C59.8274 40.138 70.2648 36.824 79.0085 40.4823C87.7416 44.136 92.6836 53.8827 90.3886 63.0856C97.6828 62.7671 104 68.7067 104 76.0281C104 83.1158 98.0476 89 90.9767 89C89.8721 89 88.9767 88.104 88.9767 86.9986C88.9767 85.8933 89.8721 84.9973 90.9767 84.9973C95.8637 84.9973 100 80.8799 100 76.0281C100 71.0262 95.6222 66.8637 90.5629 67.0846L87.8866 67.2014C87.2562 67.229 86.6497 66.9571 86.2505 66.4681C85.8513 65.979 85.7062 65.3301 85.859 64.7174L86.5076 62.1165C88.3201 54.8484 84.391 47.0727 77.4656 44.1752C70.5248 41.2713 62.1886 43.9272 58.239 50.3171L57.2003 51.9975C56.6245 52.9291 55.4074 53.2244 54.4692 52.6602L52.7767 51.6424C49.8116 49.8592 45.9319 49.9664 43.071 51.9105C40.2208 53.8474 38.7096 57.3922 39.2918 60.7745L39.6259 62.7154C39.8113 63.7924 39.0991 64.819 38.026 65.0218L36.092 65.3872C31.1421 66.3225 27.5723 71.0441 28.0437 76.0307C28.5153 81.0207 32.91 84.9983 37.9519 84.9973C39.0565 84.997 39.9521 85.8929 39.9524 86.9982C39.9526 88.1035 39.0573 88.9998 37.9528 89C30.8695 89.0015 24.7294 83.4755 24.0614 76.4076C23.3936 69.3412 28.3907 62.7689 35.3499 61.454C34.4997 56.5148 36.6828 51.4131 40.8239 48.5991C44.9752 45.7781 50.5363 45.625 54.8371 48.2115Z" fill="@C"/></g><animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></g></g><g id="Precipitation"><path id="Line 2" d="M40 95H88" stroke="@C" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0;3 0;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></path><path id="Line 1" d="M40 103H88" stroke="@C" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0;3 0;0 0" dur="3s" begin="0.2s" repeatCount="indefinite" calcMode="spline" keySplines=".42 0 .58 1; .42 0 .58 1"/></path></g></g><defs><clipPath id="clip0_2038_14230"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`,
+    fire: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="fire-alert" clip-path="url(#clip0_3112_28767)"><g id="Mask group"><mask id="mask0_3112_28767" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128"><path id="Alert Mask" fill-rule="evenodd" clip-rule="evenodd" d="M128 128H0V0H128V128ZM97.1963 67C94.8869 63 89.1131 63 86.8037 67L74.6797 88C72.3703 92 75.2572 97 79.876 97H104.124C108.743 97 111.63 92 109.32 88L97.1963 67Z" fill="@C"/></mask><g mask="url(#mask0_3112_28767)"><g id="Fire"><path id="Vector" d="M55.507 27.7732C55.5034 27.7695 55.5037 27.7635 55.5076 27.7602C56.7533 26.7054 58.5837 26.7483 59.7736 27.8888C61.4213 29.467 62.8948 31.2084 64.3148 32.977C65.6547 34.6401 67.1931 36.699 68.7502 39.0874C69.555 40.3216 71.3573 40.4203 72.2853 39.2759C72.4327 39.099 72.58 38.9086 72.7274 38.7181C73.7857 37.3849 75.0985 35.7115 76.8533 35.7115C78.6484 35.7115 79.9076 37.3304 80.9792 38.7181C81.1534 38.9494 81.3275 39.1671 81.5017 39.3711C82.8815 41.0581 84.7167 43.4933 86.5519 46.4999C90.1956 52.4724 94 60.9752 94 70.5257C94 87.3546 80.564 101 63.9933 101C47.4226 101 34 87.3682 34 70.5393C34 58.1455 39.5057 47.4114 44.7837 39.9289C47.4494 36.1604 50.1018 33.1402 52.0978 31.0723C53.194 29.9318 54.3036 28.8049 55.5064 27.7862C55.5104 27.7828 55.5106 27.7769 55.507 27.7732ZM64.2344 87.9532C67.6236 87.9532 70.6242 87.0009 73.4508 85.0962C79.0904 81.0965 80.6042 73.0969 77.215 66.8116C76.6122 65.5872 75.0717 65.5056 74.2009 66.5395L70.8252 70.5257C69.9411 71.5596 68.347 71.5324 67.5164 70.4577C65.1989 67.451 60.939 61.9684 58.7689 59.1658C58.0455 58.2271 56.7328 58.0775 55.8888 58.9073C53.4374 61.329 48.99 66.6348 48.99 73.0969C48.99 82.4297 55.7683 87.9532 64.221 87.9532H64.2344Z" fill="@C"/></g></g></g><g id="Alert"><path id="Exclamation" d="M89.4019 68.5C90.5566 66.5 93.4434 66.5 94.5981 68.5L106.722 89.5C107.877 91.5 106.434 94 104.124 94H79.8756C77.5662 94 76.1229 91.5 77.2776 89.5L89.4019 68.5Z" fill="@C"/><path id="ExclamationMark" d="M92.7582 84.59H91.2642L90.4182 79.568V76.184H93.5862V79.568L92.7582 84.59ZM93.6042 89H90.4002V85.994H93.6042V89Z" fill="white"/></g></g><defs><clipPath id="clip0_3112_28767"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`,
+    info: `<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="weather-alert" clip-path="url(#clip0_2038_25186)"><g id="Sky"><g id="Clouds"><g id="Cloud"><path id="Cloud_2" fill-rule="evenodd" clip-rule="evenodd" d="M54.8371 48.2115C59.8274 40.138 70.2648 36.824 79.0085 40.4823C87.7416 44.136 92.6836 53.8827 90.3886 63.0856C97.6828 62.7671 104 68.7067 104 76.0281C104 83.1158 98.0476 89 90.9767 89C89.8721 89 88.9767 88.104 88.9767 86.9986C88.9767 85.8933 89.8721 84.9973 90.9767 84.9973C95.8637 84.9973 100 80.8799 100 76.0281C100 71.0262 95.6222 66.8637 90.5629 67.0846L87.8866 67.2014C87.2562 67.229 86.6497 66.9571 86.2505 66.4681C85.8513 65.979 85.7062 65.3301 85.859 64.7174L86.5076 62.1165C88.3201 54.8484 84.391 47.0727 77.4656 44.1752C70.5248 41.2713 62.1886 43.9272 58.239 50.3171L57.2003 51.9975C56.6245 52.9291 55.4074 53.2244 54.4692 52.6602L52.7767 51.6424C49.8116 49.8592 45.9319 49.9664 43.071 51.9105C40.2208 53.8474 38.7096 57.3922 39.2918 60.7745L39.6259 62.7154C39.8113 63.7924 39.0991 64.819 38.026 65.0218L36.092 65.3872C31.1421 66.3225 27.5723 71.0441 28.0437 76.0307C28.5153 81.0207 32.91 84.9983 37.9519 84.9973C39.0565 84.997 39.9521 85.8929 39.9524 86.9982C39.9526 88.1035 39.0573 88.9998 37.9528 89C30.8695 89.0015 24.7294 83.4755 24.0614 76.4076C23.3936 69.3412 28.3907 62.7689 35.3499 61.454C34.4997 56.5148 36.6828 51.4131 40.8239 48.5991C44.9752 45.7781 50.5363 45.625 54.8371 48.2115Z" fill="@C"/></g></g></g><g id="Alert"><path id="Exclamation" d="M61.4019 63.5C62.5566 61.5 65.4434 61.5 66.5981 63.5L78.7224 84.5C79.8771 86.5 78.4338 89 76.1244 89H51.8756C49.5662 89 48.1229 86.5 49.2776 84.5L61.4019 63.5Z" fill="@C"/><path id="ExclamationMark" d="M64.7582 79.59H63.2642L62.4182 74.568V71.184H65.5862V74.568L64.7582 79.59ZM65.6042 84H62.4002V80.994H65.6042V84Z" fill="white"/></g></g><defs><clipPath id="clip0_2038_25186"><rect width="128" height="128" fill="white"/></clipPath></defs></svg>`
+};
+let iconUid = 0;
+/**
+ * Devolve o SVG Meteocons do tipo de evento, colorido com a cor do aviso.
+ * @param {string} kind  tipo do evento (rain, hail, wind...)
+ * @param {string} color cor da severidade (ex.: "#ff7a1a")
+ * @param {number} size  lado em px (CSS pode sobrescrever)
+ */
+function iconSvg(kind, color, size = 64) {
+    const raw = METEO[kind] || METEO.info, uid = ++iconUid;
+    return raw
+        .replaceAll("@C", color)                                            // 1) cor da severidade
+        .replace(/url\(#([^)]+)\)/g, (m, id) => `url(#${id}-${uid})`)      // 2) ids únicos
+        .replace(/ id="([^"]+)"/g, (m, id) => ` id="${id}-${uid}"`)
+        .replace('viewBox="0 0 128 128"', 'viewBox="16 16 96 96"')          // 3) corta a margem vazia
+        .replace("<svg ", `<svg width="${size}" height="${size}" `);        // 4) tamanho
+}
+function eventKind(ev) {
+    const n = norm(ev);
+    if (n.includes("costeiro") || n.includes("ressaca")) return "coast";
+    if (n.includes("tornado")) return "tornado";
+    if (n.includes("ciclone")) return "cyclone";
+    if (n.includes("incendio") || n.includes("queimada")) return "fire";
+    if (n.includes("granizo")) return "hail";
+    if (n.includes("tempestade")) return "storm";
+    if (n.includes("vendaval") || n.includes("vento") || n.includes("jato")) return "wind";
+    if (n.includes("calor")) return "heat";
+    if (n.includes("umidade")) return "dry";
+    if (n.includes("acumulado") || n.includes("inundac")) return "accum";
+    if (n.includes("chuva")) return "rain";
+    if (n.includes("declinio")) return "tempdrop";
+    if (n.includes("frio") || n.includes("geada") || n.includes("friagem") || n.includes("neve")) return "cold";
+    if (n.includes("nevoeiro") || n.includes("neblina")) return "fog";
+    return "info";
+}
+const SUMMARY = {
+    heat: "Calor extremo: risco à saúde.", dry: "Ar muito seco: cuide da saúde e não faça fogo.",
+    rain: "Chuva forte: risco de alagamentos.", accum: "Muita chuva acumulada: risco de enchentes e deslizamentos.",
+    storm: "Temporal com vento forte e possível granizo.", hail: "Possível queda de granizo.",
+    wind: "Ventania: cuidado com queda de árvores e objetos.", tornado: "Risco de vendaval extremo: procure abrigo.",
+    coast: "Vento forte e mar agitado no litoral.", cold: "Frio intenso: proteja-se.",
+    tempdrop: "Queda de temperatura: agasalhe-se.", fog: "Pouca visibilidade nas ruas e estradas.", cyclone: "Ciclone: ventos fortes e chuva intensa.", fire: "Risco de incêndio: não faça fogo.", info: "Fique atento às orientações oficiais."
+};
+/* ---------------- Orientações rápidas por tipo de evento ---------------- */
+const TIPS = {
+    heat: ["Beba água o dia todo", "Evite o sol das 10h às 16h", "Use roupa leve e chapéu", "Cuide de crianças, idosos e pets"],
+    dry: ["Beba bastante água", "Evite exercício ao ar livre", "Nunca faça fogo em mato ou lixo", "Umidifique os ambientes"],
+    rain: ["Evite ruas alagadas", "Fique longe de encostas e rios", "Não atravesse água correndo", "Desligue aparelhos se alagar"],
+    accum: ["Evite áreas alagáveis e encostas", "Fique longe de rios e córregos", "Não atravesse água correndo", "Se houver risco, saia de casa"],
+    storm: ["Procure abrigo seguro", "Fique longe de janelas", "Evite árvores, postes e áreas abertas", "Desligue aparelhos da tomada"],
+    hail: ["Abrigue-se em local coberto", "Proteja carros e animais", "Fique longe de janelas e vidros", "Só saia depois que passar"],
+    wind: ["Recolha objetos soltos", "Fique longe de árvores e fios", "Evite andar na rua", "Feche portas e janelas"],
+    tornado: ["Abrigue-se em cômodo interno", "Fique longe de janelas", "Não fique em carros ou trailers", "Proteja a cabeça"],
+    coast: ["Afaste-se da orla e das dunas", "Deixe barcos em local seguro", "Prenda objetos soltos", "Evite entrar no mar"],
+    cold: ["Agasalhe-se bem", "Cuide de crianças e idosos", "Ventile o ambiente ao usar aquecedor", "Proteja animais e plantas"],
+    tempdrop: ["Leve agasalho ao sair", "Cuide de crianças e idosos", "Ventile o ambiente ao usar aquecedor", "Proteja animais e plantas"],
+    fog: ["Dirija devagar", "Use farol baixo", "Aumente a distância dos veículos", "Evite ultrapassagens"],
+    cyclone: ["Fique em local abrigado", "Recolha objetos soltos", "Evite áreas litorâneas e rios", "Acompanhe a Defesa Civil"],
+    fire: ["Não faça fogo em mato ou lixo", "Avise os Bombeiros (193) se ver fumaça", "Evite áreas de vegetação seca", "Cuide da saúde: fumaça irrita"],
+    info: ["Acompanhe o INMET", "Siga a Defesa Civil local", "Evite situações de risco", "Avise familiares e vizinhos"]
+};
+const CALLS = [
+    ["199", "Defesa Civil", "Alagamento, deslizamento e risco em casa", true],
+    ["193", "Bombeiros", "Incêndio, resgate, árvore ou poste caído", false],
+    ["192", "SAMU", "Emergência de saúde", false],
+    ["190", "Polícia Militar", "Ameaça à segurança", false]
+];
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+function when(d) {
+    if (!d) return { day: "—", time: "" };
+    const p = Object.fromEntries(new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(d).map(x => [x.type, x.value]));
+    return { day: `${cap(p.weekday.replace(".", ""))}, ${p.day}/${p.month}`, time: `${p.hour}:${p.minute}` };
+}
+/* destaca números e unidades (mm/h, km/h, ºC, %) e o grau de risco */
+const hl = s => esc(s).replace(/(\d[\d\s\-–]*(?:e\s*\d[\d\s\-–]*)?\s?(?:mm\/dia|mm\/h|km\/h|ºC|°C|%))/g, '<b class="num">$1</b>').replace(/\b(baixo risco|grande risco|leve risco|risco)\b/i, m => `<b>${m}</b>`);
+
+/* ---------------- Severidade ---------------- */
+const SEV = {
+    potential: { key: "potential", label: "PERIGO POTENCIAL", level: 1, color: "#f5c518", meaning: "Baixo risco. Fique atento." },
+    danger:    { key: "danger",    label: "PERIGO",           level: 2, color: "#ff7a1a", meaning: "Risco alto. Tome cuidado." },
+    great:     { key: "great",     label: "GRANDE PERIGO",    level: 3, color: "#f0322d", meaning: "Risco extremo. Siga as orientações agora." }
+};
+function severityOf(label) {
+    const n = norm(label);
+    if (n.includes("grande perigo")) return SEV.great;
+    if (n.includes("potencial")) return SEV.potential;
+    if (n.includes("perigo")) return SEV.danger;
+    return SEV.potential;
+}
+
+/* ---------------- Estados e mesorregiões (nomes oficiais usados pelo INMET) ---------------- */
+const STATES = [["AC","Acre"],["AL","Alagoas"],["AP","Amapá"],["AM","Amazonas"],["BA","Bahia"],["CE","Ceará"],["DF","Distrito Federal"],["ES","Espírito Santo"],["GO","Goiás"],["MA","Maranhão"],["MT","Mato Grosso"],["MS","Mato Grosso do Sul"],["MG","Minas Gerais"],["PA","Pará"],["PB","Paraíba"],["PR","Paraná"],["PE","Pernambuco"],["PI","Piauí"],["RJ","Rio de Janeiro"],["RN","Rio Grande do Norte"],["RS","Rio Grande do Sul"],["RO","Rondônia"],["RR","Roraima"],["SC","Santa Catarina"],["SP","São Paulo"],["SE","Sergipe"],["TO","Tocantins"]];
+const STATE_NAME = Object.fromEntries(STATES);
+const MESO = {
+    AC:["Vale do Acre","Vale do Juruá"],
+    AL:["Sertão Alagoano","Agreste Alagoano","Leste Alagoano"],
+    AP:["Norte do Amapá","Sul do Amapá"],
+    AM:["Norte Amazonense","Sudoeste Amazonense","Centro Amazonense","Sul Amazonense"],
+    BA:["Extremo Oeste Baiano","Vale São-Franciscano da Bahia","Centro Norte Baiano","Nordeste Baiano","Metropolitana de Salvador","Centro Sul Baiano","Sul Baiano"],
+    CE:["Noroeste Cearense","Norte Cearense","Metropolitana de Fortaleza","Sertões Cearenses","Jaguaribe","Centro-Sul Cearense","Sul Cearense"],
+    DF:["Distrito Federal"],
+    ES:["Noroeste Espírito-santense","Litoral Norte Espírito-santense","Central Espírito-santense","Sul Espírito-santense"],
+    GO:["Noroeste Goiano","Norte Goiano","Centro Goiano","Leste Goiano","Sul Goiano"],
+    MA:["Norte Maranhense","Oeste Maranhense","Centro Maranhense","Leste Maranhense","Sul Maranhense"],
+    MT:["Norte Mato-grossense","Nordeste Mato-grossense","Sudoeste Mato-grossense","Centro-Sul Mato-grossense","Sudeste Mato-grossense"],
+    MS:["Pantanais Sul Mato-grossense","Centro Norte de Mato Grosso do Sul","Leste de Mato Grosso do Sul","Sudoeste de Mato Grosso do Sul"],
+    MG:["Noroeste de Minas","Norte de Minas","Jequitinhonha","Vale do Mucuri","Triângulo Mineiro/Alto Paranaíba","Central Mineira","Metropolitana de Belo Horizonte","Vale do Rio Doce","Oeste de Minas","Sul/Sudoeste de Minas","Campo das Vertentes","Zona da Mata"],
+    PA:["Baixo Amazonas","Marajó","Metropolitana de Belém","Nordeste Paraense","Sudoeste Paraense","Sudeste Paraense"],
+    PB:["Sertão Paraibano","Borborema","Agreste Paraibano","Mata Paraibana"],
+    PR:["Noroeste Paranaense","Centro Ocidental Paranaense","Norte Central Paranaense","Norte Pioneiro Paranaense","Centro Oriental Paranaense","Oeste Paranaense","Sudoeste Paranaense","Centro-Sul Paranaense","Sudeste Paranaense","Metropolitana de Curitiba"],
+    PE:["Sertão Pernambucano","São Francisco Pernambucano","Agreste Pernambucano","Mata Pernambucana","Metropolitana do Recife"],
+    PI:["Norte Piauiense","Centro-Norte Piauiense","Sudoeste Piauiense","Sudeste Piauiense"],
+    RJ:["Noroeste Fluminense","Norte Fluminense","Centro Fluminense","Baixadas","Sul Fluminense","Metropolitana do Rio de Janeiro"],
+    RN:["Oeste Potiguar","Central Potiguar","Agreste Potiguar","Leste Potiguar"],
+    RS:["Noroeste Rio-grandense","Nordeste Rio-grandense","Centro Ocidental Rio-grandense","Centro Oriental Rio-grandense","Metropolitana de Porto Alegre","Sudoeste Rio-grandense","Sudeste Rio-grandense"],
+    RO:["Madeira-Guaporé","Leste Rondoniense"],
+    RR:["Norte de Roraima","Sul de Roraima"],
+    SC:["Oeste Catarinense","Norte Catarinense","Serrana","Vale do Itajaí","Grande Florianópolis","Sul Catarinense"],
+    SP:["São José do Rio Preto","Ribeirão Preto","Araçatuba","Bauru","Araraquara","Piracicaba","Campinas","Presidente Prudente","Marília","Assis","Itapetininga","Macro Metropolitana Paulista","Vale do Paraíba Paulista","Litoral Sul Paulista","Metropolitana de São Paulo"],
+    SE:["Sertão Sergipano","Agreste Sergipano","Leste Sergipano"],
+    TO:["Ocidental do Tocantins","Oriental do Tocantins"]
+};
+
+/* ---------------- Helpers ---------------- */
+const $ = id => document.getElementById(id);
+const norm = s => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const REGION_UF = {};
+Object.entries(MESO).forEach(([uf, list]) => list.forEach(r => REGION_UF[norm(r)] = uf));
+REGION_UF["sul e sudoeste de minas"] = "MG";
+
+const fmtDate = d => d ? new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(d) : "—";
+const dayKey = d => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(d);
+function parseDate(v) {
+    if (!v) return null;
+    const s = String(v).trim().replace(/\.\d+$/, "").replace(" ", "T");
+    const d = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : s + "-03:00");
+    return isNaN(d) ? null : d;
+}
+function duration(a, b) {
+    if (!a || !b) return "—";
+    const h = Math.max(0, Math.round((b - a) / 36e5));
+    return h >= 48 ? `${Math.round(h / 24)} dias` : `${h} h`;
+}
+const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+
+/* ---------------- Estado da aplicação ---------------- */
+let allAlerts = [], selectedState = "", selectedAlert = null, activeTab = "overview", showAllStates = false;
+
+/* ---------------- Rede ---------------- */
+/**
+ * Busca uma URL tentando, em ordem: servidor local -> direto -> proxies públicos.
+ * `read` decide como ler a resposta (texto, json, blob); `check` valida o conteúdo.
+ */
+async function fetchVia(url, read, check = () => {}) {
+    const tries = [];
+    if (SAME_ORIGIN_PROXY) tries.push(["servidor local", () => SAME_ORIGIN_PROXY + encodeURIComponent(url)]);
+    tries.push(["direto", () => url]);
+    PUBLIC_PROXIES.forEach(([n, p]) => tries.push([n, () => p(url)]));
+    const errors = [];
+    for (const [name, build] of tries) {
+        const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 20000);
+        try {
+            const r = await fetch(build(), { signal: ctrl.signal, cache: "no-store" });
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            const out = await read(r);
+            check(out);
+            return out;
+        } catch (e) { errors.push(name + ": " + (e.name === "AbortError" ? "tempo esgotado" : e.message)); }
+        finally { clearTimeout(to); }
+    }
+    throw new Error(errors.join(" | "));
+}
+const fetchText = url => fetchVia(url, r => r.text(), t => { if (!t.trim().startsWith("<")) throw new Error("resposta inesperada"); });
+
+/* ---------------- Lista (RSS) ---------------- */
+function parseRSS(text) {
+    const xml = new DOMParser().parseFromString(text, "application/xml");
+    if (xml.querySelector("parsererror")) throw new Error("RSS inválido");
+    return [...xml.querySelectorAll("item")].map(item => {
+        const html = item.querySelector("description")?.textContent || "";
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const f = {};
+        doc.querySelectorAll("tr").forEach(tr => {
+            const k = tr.querySelector("th")?.textContent.trim();
+            if (k) f[k] = tr.querySelector("td")?.textContent.trim() || "";
+        });
+        const id = ((item.querySelector("guid")?.textContent || "").match(/(\d+)\s*$/) || [])[1] || "";
+        const areas = (f["Área"] || "").replace(/^Aviso para as [ÁáAa]reas?:\s*/i, "").split(",").map(s => s.trim()).filter(Boolean);
+        const byState = {};
+        areas.forEach(a => {
+            const uf = REGION_UF[norm(a)];
+            if (uf) (byState[uf] ||= []).push(a); else console.warn("Área sem UF mapeada:", a);
+        });
+        return {
+            id, num: Number(id) || 0, status: f["Status"] || "", pub: new Date(item.querySelector("pubDate")?.textContent || 0), event: f["Evento"] || "Aviso Meteorológico", severity: severityOf(f["Severidade"]),
+            start: parseDate(f["Início"]), end: parseDate(f["Fim"]),
+            rawDescription: (f["Descrição"] || "").trim(),   // texto integral, como no site do INMET
+            description: (f["Descrição"] || "").replace(/^INMET publica aviso iniciando em:\s*[\d\/]+\s+[\d:]+\.?\s*/i, "").trim(),
+            areas, byState, states: Object.keys(byState), detail: null
+        };
+    }).filter(a => a.id && a.start && a.end);
+}
+
+/* ---------------- Detalhe (CAP) ---------------- */
+function parseCAP(text) {
+    const xml = new DOMParser().parseFromString(text, "application/xml");
+    if (xml.querySelector("parsererror")) throw new Error("CAP inválido");
+    const t = n => xml.getElementsByTagNameNS("*", n)[0]?.textContent.trim() || "";
+    const params = {};
+    [...xml.getElementsByTagNameNS("*", "parameter")].forEach(p => {
+        params[p.getElementsByTagNameNS("*", "valueName")[0]?.textContent] = p.getElementsByTagNameNS("*", "value")[0]?.textContent.trim() || "";
+    });
+    const muni = {};
+    for (const m of (params.Municipios || "").matchAll(/(?:^|,\s)([^,]+?) - ([A-Z]{2}) \(\d{7}\)/g)) (muni[m[2]] ||= []).push(m[1]);
+    return {
+        instruction: t("instruction"), color: /^#[0-9a-f]{6}$/i.test(params.ColorRisk || "") ? params.ColorRisk : "",
+        sent: parseDate(t("sent")), contact: t("contact"), web: t("web"), muni,
+        estados: params.Estados || ""
+    };
+}
+function loadDetail(a) {
+    a.detailPromise ||= fetchText(DETAIL_URL(a.id)).then(parseCAP).then(d => {
+        a.detail = d;
+        d.states = Object.keys(d.muni);
+        d.states.forEach(uf => { if (!a.states.includes(uf)) a.states.push(uf); });
+    }).catch(e => { a.detailFailed = true; console.warn("Detalhe indisponível:", e); });
+    return a.detailPromise;
+}
+
+/* ---------------- Carregamento ---------------- */
+function setStatus(type, title, desc) {
+    $("statusDot").className = "status-dot " + type;
+    $("statusTitle").textContent = title;
+    $("statusDescription").textContent = desc;
+    $("statusDot").parentElement.title = desc;
+    $("bannerText").textContent = desc;
+    $("banner").hidden = type !== "error";
+}
+async function loadINMET() {
+    setStatus("", "Conectando ao INMET", "Consultando o feed oficial de avisos.");
+    $("refreshButton").classList.add("spin");
+    try {
+        const list = parseRSS(await fetchText(RSS_URL));
+        allAlerts = list.filter(a => a.end.getTime() >= Date.now());      // descarta o histórico já expirado
+        const hora = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }).format(new Date());
+        setStatus("ok", "Conectado ao INMET", `${alertsInForce().length} avisos em vigor • atualizado às ${hora}`);
+    } catch (e) {
+        console.error(e);
+        allAlerts = [];
+        setStatus("error", "Sem conexão com o INMET", "Não foi possível consultar o INMET (o navegador costuma bloquear por CORS). Rode 'node server.js' e abra http://localhost:3000. Detalhes: " + String(e.message).slice(0, 200));
+    } finally { $("refreshButton").classList.remove("spin"); }
+}
+
+/* =====================================================================
+   MÓDULO: ALERTAS "EM VIGOR"  (regra estrita, igual ao site oficial)
+   ---------------------------------------------------------------------
+   Um aviso só conta se, NO INSTANTE ATUAL:
+       início <= agora <= fim   e   não foi cancelado.
+   - Histórico: o feed do INMET lista dias de avisos antigos. Eles são ignorados.
+   - Expirados: passaram do "Fim" -> fora, mesmo que sejam os mais recentes.
+   - Futuros: ainda não começaram -> fora até o minuto do "Início".
+   As datas do INMET vêm em horário de Brasília; parseDate() as converte para
+   instantes absolutos (-03:00), então a comparação com Date.now() é exata em
+   qualquer fuso do computador. tick() reavalia a cada 30 s: um aviso some da
+   tela no minuto em que vence, sem precisar recarregar.
+===================================================================== */
+const CANCELLED = /cancel/i;
+const isInForce = (a, t = Date.now()) => !CANCELLED.test(a.status) && a.start.getTime() <= t && t <= a.end.getTime();
+const alertsInForce = (t = Date.now()) => allAlerts.filter(a => isInForce(a, t));
+const bySeverity = (a, b) => b.severity.level - a.severity.level || b.num - a.num;
+/** { UF: [avisos em vigor que atingem a UF] } — só estados com pelo menos um aviso. */
+function inForceByState(t = Date.now()) {
+    const map = {};
+    for (const a of alertsInForce(t)) for (const uf of a.states) (map[uf] ||= []).push(a);
+    for (const uf in map) map[uf].sort(bySeverity);
+    return map;
+}
+const forState = (a, uf) => !uf || a.states.includes(uf);
+const viewAlerts = () => alertsInForce().filter(a => forState(a, selectedState)).sort(bySeverity);
+const areasFor = a => (selectedState && a.byState[selectedState]) || a.areas;
+const sentence = s => cap(s.label.toLowerCase());
+const SEV_LIST = [SEV.great, SEV.danger, SEV.potential];   // do mais grave ao menos grave
+/** "termina em 3 h 10 min" (menos de 24 h) ou "termina Qui, 02/10 às 23:59". */
+function endsIn(a) {
+    const ms = a.end - Date.now(), min = Math.max(0, Math.round(ms / 6e4));
+    if (min < 60) return `termina em ${min} min`;
+    if (min < 1440) return `termina em ${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`;
+    const w = when(a.end); return `termina ${w.day} às ${w.time}`;
+}
+
+/* =====================================================================
+   MÓDULO: ABAS (Visão geral / Alertas ativos / Mapa)
+===================================================================== */
+const TAB_TITLES = { overview: "Visão geral", alerts: "Alertas ativos", map: "Mapa" };
+function moveIndicator() {
+    const b = document.querySelector('.tab[aria-selected="true"]'), i = $("tabIndicator");
+    if (!b) return;
+    i.style.width = b.offsetWidth + "px"; i.style.height = b.offsetHeight + "px";
+    i.style.transform = `translate(${b.offsetLeft}px, ${b.offsetTop}px)`;
+}
+function setTab(name, { focus = false } = {}) {
+    if (!TAB_TITLES[name]) name = "overview";
+    activeTab = name;
+    document.querySelectorAll(".tab").forEach(b => {
+        const on = b.dataset.tab === name;
+        b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; if (on && focus) b.focus();
+    });
+    document.querySelectorAll(".panel").forEach(p => { p.hidden = p.id !== "panel-" + name; });
+    try { history.replaceState(null, "", "#" + name); } catch {}
+    moveIndicator(); renderHeader(); fitPreview();
+}
+function renderHeader() {
+    $("pageTitle").textContent = TAB_TITLES[activeTab];
+    const n = alertsInForce().length, w = when(new Date());
+    $("pageSub").textContent = activeTab === "overview" ? `Situação de ${w.day} às ${w.time}, horário de Brasília`
+        : activeTab === "alerts" ? `${viewAlerts().length} de ${n} avisos em vigor${selectedState ? " em " + STATE_NAME[selectedState] : ""}`
+        : "Distribuição dos avisos pelo país";
+}
+
+/* =====================================================================
+   MÓDULO: VISÃO GERAL — resumo, estados com bandeira e fenômenos
+   Bandeiras: API Codante. flagMap {UF: url} vem de /bandeiras-dos-estados;
+   se a API falhar, usa a URL padrão do CDN da própria Codante.
+===================================================================== */
+let flagMap = null;
+const flagUrl = uf => (flagMap && flagMap[uf]) || `https://assets.codante.io/codante-apis/bandeiras-do-brasil/${uf.toLowerCase()}-full.svg`;
+async function ensureFlagMap() {
+    if (flagMap) return;
+    try {
+        const j = flagIndex ||= await fetchVia(FLAG_API, r => r.json());
+        flagMap = Object.fromEntries((Array.isArray(j) ? j : j.data || []).map(f => [f.uf, f.flag_url]));
+    } catch (e) { console.warn("API de bandeiras indisponível; usando URL padrão:", e.message); flagMap = {}; }
+}
+function renderOverview() {
+    const t = Date.now(), now = alertsInForce(t), byState = inForceByState(t), withAlerts = Object.keys(byState);
+    $("kpiTotal").textContent = now.length;
+    $("sitrepText").textContent = now.length
+        ? `${now.length === 1 ? "aviso em vigor" : "avisos em vigor"} agora, atingindo ${withAlerts.length} ${withAlerts.length === 1 ? "estado" : "estados"}.`
+        : "Nenhum aviso do INMET em vigor neste momento.";
+    const counts = SEV_LIST.map(s => [s, now.filter(a => a.severity.level === s.level).length]);
+    $("sevBar").innerHTML = counts.filter(([, n]) => n).map(([s, n]) => `<i style="flex:${n};background:${s.color}"></i>`).join("");
+    $("sevLegend").innerHTML = counts.map(([s, n]) => `<div><strong style="color:${n ? s.color : "var(--faint)"}">${n}</strong><span>${sentence(s)}</span></div>`).join("");
+
+    // estados: só os que têm aviso (ou os 27, se pedido), do mais grave ao menos grave
+    const maxLevel = uf => Math.max(0, ...(byState[uf] || []).map(a => a.severity.level));
+    const ufs = (showAllStates ? STATES.map(s => s[0]) : withAlerts)
+        .sort((x, y) => maxLevel(y) - maxLevel(x) || (byState[y]?.length || 0) - (byState[x]?.length || 0) || STATE_NAME[x].localeCompare(STATE_NAME[y], "pt-BR"));
+    $("stateGrid").innerHTML = ufs.length ? ufs.map(uf => {
+        const list = byState[uf] || [], sev = SEV_LIST.find(s => s.level === maxLevel(uf));
+        const events = [...new Set(list.map(a => a.event))];
+        const sub = events.length ? events.slice(0, 2).join(", ") + (events.length > 2 ? ` +${events.length - 2}` : "") : "Sem avisos em vigor";
+        return `<button class="uf-row${list.length ? "" : " zero"}" type="button" data-uf="${uf}" style="${sev ? `--sev:${sev.color}` : ""}">
+            <img class="uf-flag" src="${esc(flagUrl(uf))}" alt="Bandeira de ${esc(STATE_NAME[uf])}" width="56" height="40" loading="lazy" decoding="async" onerror="this.onerror=null;this.classList.add('broken')">
+            <span class="uf-meta"><strong>${esc(STATE_NAME[uf])}</strong><span>${esc(sub)}</span></span>
+            <span class="uf-count"><b>${list.length}</b><small>${list.length === 1 ? "aviso" : "avisos"}</small></span></button>`;
+    }).join("") : `<div class="empty" style="grid-column:1/-1"><strong>Céu tranquilo por enquanto</strong>Nenhum estado tem aviso em vigor neste momento.</div>`;
+
+    // fenômenos
+    const groups = {};
+    now.forEach(a => (groups[a.event] ||= []).push(a));
+    $("phenomList").innerHTML = Object.entries(groups).map(([ev, arr]) => {
+        const lvl = Math.max(...arr.map(a => a.severity.level)), sev = SEV_LIST.find(s => s.level === lvl);
+        return { ev, arr, lvl, sev, ufs: new Set(arr.flatMap(a => a.states)).size };
+    }).sort((x, y) => y.lvl - x.lvl || y.arr.length - x.arr.length).map(g => `<li>${iconSvg(eventKind(g.ev), g.sev.color, 34)}
+        <div><strong>${esc(g.ev)}</strong><small>${g.ufs} ${g.ufs === 1 ? "estado" : "estados"} • ${sentence(g.sev)}</small></div><b style="color:${g.sev.color}">${g.arr.length}</b></li>`).join("")
+        || `<li><div><small>Nenhum fenômeno em vigor.</small></div></li>`;
+}
+
+/* =====================================================================
+   MÓDULO: ALERTAS ATIVOS — lista + seleção
+===================================================================== */
+function setState(uf, { go = false } = {}) {
+    selectedState = uf; selectedAlert = null;
+    $("stateSelect").value = uf;
+    if (go) setTab("alerts");
+    renderAll();
+}
+function renderList() {
+    const list = viewAlerts(), box = $("sidebarAlertList");
+    $("sidebarResultCount").textContent = `${list.length} ${list.length === 1 ? "aviso" : "avisos"}`;
+    $("tabCount").textContent = alertsInForce().length;
+    if (!list.length) {
+        box.innerHTML = `<div class="empty"><strong>Nada em vigor agora</strong>${allAlerts.length ? `Não há aviso ativo${selectedState ? " em " + esc(STATE_NAME[selectedState]) : ""} neste momento.` : "Sem dados do INMET no momento."}</div>`;
+        return;
+    }
+    box.innerHTML = list.map(a => {
+        const areas = areasFor(a);
+        return `<button class="al${selectedAlert === a ? " selected" : ""}" type="button" data-id="${esc(a.id)}" style="--sev:${a.severity.color}">
+            <span class="al-icon">${iconSvg(eventKind(a.event), a.severity.color, 36)}</span>
+            <span class="al-main"><strong>${esc(a.event)}</strong><span class="al-sev">${sentence(a.severity)}</span>
+            <span class="al-where">${areas.length} ${areas.length === 1 ? "região" : "regiões"}${selectedState ? " em " + selectedState : ""} • ${endsIn(a)}</span></span></button>`;
+    }).join("");
+}
+function selectAlert(a) {
+    if (!a) return;
+    selectedAlert = a;
+    renderList(); renderPreview();
+    loadDetail(a).then(() => { if (selectedAlert === a) renderPreview(); });
+    if (window.innerWidth < 980) $("alert-card-container").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+/** Encolhe só a PRÉ-VISUALIZAÇÃO do card (1080 px) para caber na coluna; o PNG exportado continua em 1080 px. */
+function fitPreview() {
+    const wrap = $("alert-card-container"), card = $("captureArea");
+    if (!wrap || !card || wrap.offsetParent === null) return;
+    const s = Math.min(1, wrap.clientWidth / 1080);
+    card.style.transformOrigin = "top left";
+    card.style.transform = s < 1 ? `scale(${s})` : "";
+    wrap.style.height = s < 1 ? Math.ceil(card.offsetHeight * s) + "px" : "";
+}
+
+/* =====================================================================
+   MÓDULO: BANDEIRAS DOS ESTADOS  (API Codante — https://apis.codante.io/bandeiras-dos-estados)
+   1. Lista uma vez [{uf, name, flag_url, ...}] e guarda em cache.
+   2. Para a UF do aviso, pega flag_url (SVG). Se a API falhar, monta a URL
+      padrão do CDN: .../bandeiras-do-brasil/{uf}-full.svg
+   3. Baixa o SVG e converte para data-URL: assim o <img> não "contamina"
+      o canvas e a bandeira aparece no PNG exportado.
+   4. Sem bandeira (erro/offline), o cabeçalho mostra a sigla da UF.
+===================================================================== */
+const FLAG_API = "https://apis.codante.io/bandeiras-dos-estados";
+let flagIndex = null;
+const flagSrc = {};       // uf -> data-URL (ou URL) já resolvido
+const flagJobs = {};      // uf -> Promise (evita baixar duas vezes)
+const blobToDataURL = blob => new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = fail; r.readAsDataURL(blob); });
+
+/**
+ * O html2canvas erra SVGs que só têm viewBox (desenha ampliado -> "bandeira toda verde").
+ * Solução: dar width/height explícitos ao SVG e rasterizar num canvas PNG,
+ * preservando a proporção da bandeira (bandeira COMPLETA, sem cortes).
+ */
+function fixSvgText(txt) {
+    const vb = (txt.match(/viewBox\s*=\s*"([^"]+)"/) || [])[1];
+    const [, , w, h] = vb ? vb.trim().split(/[\s,]+/).map(Number) : [0, 0, 640, 448];
+    return {
+        w: w || 640, h: h || 448,
+        text: txt.replace(/<svg\b([^>]*)>/, (m, attrs) => {
+            attrs = attrs.replace(/\s(width|height)\s*=\s*"[^"]*"/g, "");
+            if (!/xmlns\s*=/.test(attrs)) attrs += ' xmlns="http://www.w3.org/2000/svg"';
+            return `<svg${attrs} width="${w || 640}" height="${h || 448}">`;
+        })
+    };
+}
+const loadImg = src => new Promise((ok, fail) => { const i = new Image(), t = setTimeout(() => fail(new Error("timeout")), 8000); i.onload = () => { clearTimeout(t); ok(i); }; i.onerror = () => { clearTimeout(t); fail(new Error("imagem inválida")); }; i.src = src; });
+async function flagToPng(blob, url) {
+    let src, ratio;
+    if (blob.type.includes("svg") || /\.svg(\?|$)/i.test(url)) {
+        const fx = fixSvgText(await blob.text());
+        src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(fx.text); ratio = fx.w / fx.h;
+    } else src = await blobToDataURL(blob);
+    try {
+        const img = await loadImg(src), H = 240;                       // 3x da altura exibida (80px)
+        ratio = img.naturalWidth / img.naturalHeight || ratio || 1.4;
+        const c = document.createElement("canvas"); c.height = H; c.width = Math.round(H * ratio);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        return c.toDataURL("image/png");
+    } catch (e) { console.warn("Rasterização da bandeira falhou; usando o SVG corrigido:", e.message); return src; }
+}
+/** Resolve (e cacheia) a imagem da bandeira da UF. */
+function getFlag(uf) {
+    return flagJobs[uf] ||= (async () => {
+        let url = `https://assets.codante.io/codante-apis/bandeiras-do-brasil/${uf.toLowerCase()}-full.svg`;
+        try {
+            const j = flagIndex ||= await fetchVia(FLAG_API, r => r.json());
+            const f = (Array.isArray(j) ? j : j.data || []).find(x => x.uf === uf);
+            if (f?.flag_url) url = f.flag_url;
+        } catch (e) { console.warn("API de bandeiras indisponível, usando URL padrão:", e.message); }
+        try { return flagSrc[uf] = await flagToPng(await fetchVia(url, r => r.blob()), url); }
+        catch (e) { console.warn("Bandeira sem CORS; usando URL direta:", e.message); return flagSrc[uf] = url; }
+    })();
+}
+/** UF cuja bandeira vai no cabeçalho: a filtrada, ou a única UF do aviso. */
+const flagUFOf = a => selectedState || (a && a.states.length === 1 ? a.states[0] : "");
+const flagMarkup = uf => flagSrc[uf]
+    ? `<img class="flag" src="${flagSrc[uf]}" alt="Bandeira de ${esc(STATE_NAME[uf])}" data-uf="${uf}" onerror="flagFallback(this)">`
+    : `<span class="flag-fallback">${uf}</span>`;
+const flagFallback = img => img.replaceWith(Object.assign(document.createElement("span"), { className: "flag-fallback", textContent: img.dataset.uf }));
+/** Canto superior direito: nome do estado por extenso + bandeira. */
+const stateBadge = uf => uf ? `<div class="frame-state"><div class="frame-state-name"><span>Estado</span><strong>${esc(STATE_NAME[uf])}</strong></div><div class="flag-box" id="flagBox">${flagMarkup(uf)}</div></div>` : "";
+
+/* ---------------- Template da imagem ---------------- */
+/* =====================================================================
+   MÓDULO: TEMPLATE DA IMAGEM
+   Elementos com .adv aparecem só no modo completo; .min-only só no modo
+   simples (.minimalist-mode em #captureArea). Um único HTML, duas versões.
+===================================================================== */
+let minimal = false;
+try { minimal = localStorage.getItem("inmetMinimal") === "1"; } catch {}
+function applyMode() {
+    $("captureArea").classList.toggle("minimalist-mode", minimal);
+    const b = $("modeButton");
+    b.setAttribute("aria-pressed", String(minimal));
+    b.innerHTML = I(ICON.eye) + (minimal ? " Modo simples: ligado" : " Modo simples");
+}
+
+function renderPreview() {
+    const a = selectedAlert, box = $("captureArea"), fuf = flagUFOf(a);
+    const head = `<div class="frame-top"><div class="mark">${I(ICON.logo)}</div>
+        <div><b>AVISO METEOROLÓGICO</b><small>Instituto Nacional de Meteorologia • Dados oficiais</small></div>${stateBadge(fuf)}</div>`;
+    if (!a) {
+        box.innerHTML = head + `<div class="alert-art"><div class="art-empty">Selecione um aviso na lista para montar a imagem automaticamente.</div></div>`;
+        $("previewStateLabel").textContent = "Nenhum alerta selecionado";
+    } else {
+        box.innerHTML = head + alertMarkup(a);
+        $("previewStateLabel").textContent = `${selectedState ? STATE_NAME[selectedState] + " • " : ""}${a.event} • ${a.severity.label}`;
+    }
+    // bandeira ainda não baixada: baixa e troca o marcador quando chegar
+    if (fuf && !flagSrc[fuf]) getFlag(fuf).then(() => { const bx = $("flagBox"); if (bx && flagUFOf(selectedAlert) === fuf) bx.innerHTML = flagMarkup(fuf); });
+    fitPreview();
+}
+
+function alertMarkup(a) {
+    const d = a.detail, sev = a.severity, color = sev.color, kind = eventKind(a.event);
+    const areas = areasFor(a), uf = selectedState, others = a.states.filter(s => s !== uf);
+    const munis = d ? (uf ? d.muni[uf] || [] : Object.values(d.muni).flat()) : null;
+    const LIM = 30, s0 = when(a.start), s1 = when(a.end);
+    const sentences = (a.description || "").split(/(?<=[.!])\s+/).map(s => s.trim()).filter(Boolean);
+    const place = uf ? STATE_NAME[uf] : (a.states.length ? a.states.map(s => STATE_NAME[s]).join(", ") : "Brasil");
+
+    const munSection = munis && munis.length ? `<section class="info-section adv"><div class="info-title">${I(ICON.pin)} Municípios ${uf ? "no " + uf : "atingidos"} (${munis.length})</div>
+        <div class="mun-list">${esc(munis.slice(0, LIM).join(" • "))}${munis.length > LIM ? ` <strong>… e mais ${munis.length - LIM} municípios.</strong>` : ""}</div></section>` : "";
+
+    return `
+    <article class="alert-art" style="--art-color:${color};--art-soft:${hexA(color, .14)}">
+      <div class="art-bar"></div>
+      <header class="art-header">
+        <div class="art-head-row">
+          <div class="art-badge" style="background:linear-gradient(145deg,${hexA(color, .30)},${hexA(color, .07)});border:2px solid ${hexA(color, .65)};box-shadow:0 14px 44px ${hexA(color, .28)}">${iconSvg(kind, color, 160)}</div>
+          <div class="art-head-text">
+            <span class="art-severity">${sev.label}</span>
+            <div class="art-title">${esc(a.event)}</div>
+            <div class="art-place">${esc(place)}${uf && others.length ? ` <span style="color:#8296aa;font-weight:500">• também: ${esc(others.join(", "))}</span>` : ""}</div>
+            <div class="art-summary">${esc(SUMMARY[kind])}</div>
+            <div class="min-until min-only">Válido até <b>${s1.day} às ${s1.time}</b></div>
+          </div>
+        </div>
+        <div class="gauge adv"><div class="gauge-bars">${[1, 2, 3].map(n => `<i class="${n <= sev.level ? "on" : ""}"></i>`).join("")}</div>
+          <div class="gauge-text"><strong>Nível ${sev.level} de 3 — ${esc(sev.meaning)}</strong></div></div>
+        <div class="art-period adv">
+          <div class="period-card"><div class="period-label">Começa</div><div class="period-day">${s0.day}</div><div class="period-time">${s0.time}</div></div>
+          <div class="period-card"><div class="period-label">Termina</div><div class="period-day">${s1.day}</div><div class="period-time">${s1.time}</div></div>
+          <div class="period-card"><div class="period-label">Duração</div><div class="period-dur">${duration(a.start, a.end)}</div></div>
+        </div>
+      </header>
+      <div class="art-body">
+        <section class="info-section min-only"><div class="info-title">${I(ICON.pin)} Onde</div>
+          <div class="area-grid">${areas.map(x => `<span class="area-chip">${esc(x)}</span>`).join("")}</div></section>
+        <section class="info-section min-only"><div class="info-title">${I(ICON.doc)} Riscos potenciais</div>
+          <div class="risk-text">${hl(a.rawDescription || a.description || "Descrição não disponível no aviso.")}</div></section>
+        <section class="info-section adv"><div class="info-title">${I(ICON.doc)} O que esperar</div>
+          <ul class="expect">${(sentences.length ? sentences : ["Descrição não disponível no aviso."]).map(s => `<li class="${/risco/i.test(s) ? "risk" : ""}">${hl(s)}</li>`).join("")}</ul></section>
+        <section class="info-section"><div class="info-title">${I(ICON.shield)} O que fazer</div>
+          ${d?.instruction ? `<div class="official"><small>ORIENTAÇÃO OFICIAL DO INMET</small><div>${esc(d.instruction)}</div></div>` : ""}
+          <div class="do-grid${d?.instruction ? " adv" : ""}">${TIPS[kind].map((t, i) => `<div class="do-card"><i>${i + 1}</i><span>${esc(t)}</span></div>`).join("")}</div></section>
+        <section class="info-section adv"><div class="info-title">${I(ICON.clock)} Quem chamar</div>
+          <div class="call-grid">${CALLS.map(([n, nome, hint, main]) => `<div class="call${main ? " main" : ""}"><strong>${n}</strong><b>${nome}</b><span>${hint}</span></div>`).join("")}</div></section>
+        <section class="info-section adv"><div class="info-title">${I(ICON.pin)} Áreas afetadas${uf ? " em " + esc(STATE_NAME[uf]) : ""}</div>
+          <div class="area-grid">${areas.map(x => `<span class="area-chip">${esc(x)}</span>`).join("")}</div>
+          ${uf && a.areas.length > areas.length ? `<div class="area-note">O aviso também alcança regiões de outros estados (${a.areas.length - areas.length}); aqui aparecem só as de ${esc(STATE_NAME[uf])}.</div>` : ""}</section>
+        ${munSection}
+      </div>
+      <footer class="alert-footer adv">
+        <div><strong>Fonte:</strong> Instituto Nacional de Meteorologia — INMET<br>${esc(d?.contact || "avisos.inmet.gov.br")}</div>
+        <div style="text-align:right"><strong>Aviso nº ${esc(a.id)} • avisos.inmet.gov.br/${esc(a.id)}</strong><br>${d?.sent ? "Emitido em " + fmtDate(d.sent) : ""}</div>
+      </footer>
+    </article>
+    <div class="frame-bottom"><span>Em risco, ligue: Defesa Civil 199 • Bombeiros 193 • SAMU 192</span><span>Gerado em ${fmtDate(new Date())}</span></div>`;
+}
+
+/* ---------------- Exportar PNG ---------------- */
+async function exportarImagem() {
+    if (!selectedAlert) return alert("Selecione um aviso antes de baixar o PNG.");
+    const btn = $("downloadButton"), old = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="loading"><span class="spinner"></span>Gerando PNG...</span>`;
+    try {
+        await loadDetail(selectedAlert);
+        const fuf = flagUFOf(selectedAlert);
+        if (fuf) await getFlag(fuf);              // bandeira pronta (data-URL) antes de capturar
+        renderPreview();
+        document.querySelectorAll("#captureArea img.flag").forEach(img => { if (!img.src.startsWith("data:")) flagFallback(img); });   // remota sem CORS: usa a sigla
+        if (document.fonts?.ready) await document.fonts.ready;
+        await new Promise(r => setTimeout(r, 200));
+        // Clone fora da tela com largura fixa: o PNG sai sempre com 1080px + margens, em qualquer tamanho de janela.
+        const stage = document.createElement("div");
+        stage.style.cssText = "position:fixed;left:-20000px;top:0;width:1080px;pointer-events:none";
+        const clone = $("captureArea").cloneNode(true);
+        clone.removeAttribute("id"); clone.classList.add("capture-frame");
+        clone.style.cssText = "width:1080px;margin:0;padding:30px;box-sizing:border-box";
+        stage.appendChild(clone); document.body.appendChild(stage);
+        let canvas;
+        try {
+            canvas = await html2canvas(clone, { scale: 2, width: 1080, height: clone.offsetHeight, windowWidth: 1080, backgroundColor: "#060a10", useCORS: true, logging: false });
+        } finally { stage.remove(); }
+        const blob = await new Promise(r => canvas.toBlob(r, "image/png"));
+        if (!blob) throw new Error("PNG vazio");
+        const url = URL.createObjectURL(blob), l = document.createElement("a");
+        l.href = url; l.download = `aviso-inmet-${selectedState || "BR"}-${selectedAlert.id}.png`;
+        document.body.appendChild(l); l.click(); l.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (e) {
+        console.error(e);
+        alert("Não foi possível gerar o PNG. Tente novamente.");
+    } finally { btn.disabled = false; btn.innerHTML = old; renderPreview(); }
+}
+
+/* ---------------- Início ---------------- */
+let lastSig = "";
+function renderAll() {
+    lastSig = alertsInForce().map(a => a.id).join(",");
+    renderOverview(); renderList(); renderPreview(); renderHeader();
+}
+async function reload() {
+    await Promise.all([loadINMET(), ensureFlagMap()]);
+    if (selectedAlert) selectedAlert = allAlerts.find(a => a.id === selectedAlert.id && isInForce(a)) || null;
+    renderAll();
+}
+/** A cada 30 s reavalia "em vigor" sem nova consulta: avisos vencidos saem no minuto exato. */
+function tick() {
+    const sig = alertsInForce().map(a => a.id).join(",");
+    if (sig !== lastSig) { if (selectedAlert && !isInForce(selectedAlert)) selectedAlert = null; renderAll(); }
+    else { renderHeader(); renderList(); }
+}
+(function init() {
+    hydrateIcons();
+    $("refreshButton").innerHTML = L("refresh-cw");
+    $("downloadButton").innerHTML = L("download") + " Baixar PNG";
+    $("stateSelect").innerHTML = `<option value="">Todos os estados</option>` + STATES.map(([u, n]) => `<option value="${u}">${n}</option>`).join("");
+    $("stateSelect").onchange = () => setState($("stateSelect").value);
+    $("refreshButton").onclick = reload;
+    $("downloadButton").onclick = exportarImagem;
+    $("modeButton").onclick = () => { minimal = !minimal; try { localStorage.setItem("inmetMinimal", minimal ? "1" : "0"); } catch {} applyMode(); fitPreview(); };
+    $("toggleAllStates").onclick = () => { showAllStates = !showAllStates; $("toggleAllStates").textContent = showAllStates ? "Mostrar só estados com avisos" : "Mostrar todos os estados"; renderOverview(); };
+    $("stateGrid").addEventListener("click", e => { const b = e.target.closest("[data-uf]"); if (b) setState(b.dataset.uf, { go: true }); });
+    $("sidebarAlertList").addEventListener("click", e => { const b = e.target.closest("[data-id]"); if (b) selectAlert(allAlerts.find(a => a.id === b.dataset.id)); });
+    const tabs = [...document.querySelectorAll(".tab")];
+    tabs.forEach((b, i) => {
+        b.addEventListener("click", () => setTab(b.dataset.tab));
+        b.addEventListener("keydown", e => {   // setas, Home e End navegam entre as abas
+            const k = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+            if (k) { e.preventDefault(); setTab(tabs[(i + k + tabs.length) % tabs.length].dataset.tab, { focus: true }); }
+            if (e.key === "Home") { e.preventDefault(); setTab(tabs[0].dataset.tab, { focus: true }); }
+            if (e.key === "End") { e.preventDefault(); setTab(tabs[tabs.length - 1].dataset.tab, { focus: true }); }
+        });
+    });
+    window.addEventListener("resize", () => { moveIndicator(); fitPreview(); });
+    if (window.ResizeObserver) new ResizeObserver(fitPreview).observe($("alert-card-container"));
+    applyMode();
+    $("stateGrid").innerHTML = `<div class="empty" style="grid-column:1/-1"><span class="loading"><span class="spinner"></span>Consultando avisos oficiais do INMET...</span></div>`;
+    setTab(location.hash.slice(1) || "overview");
+    reload();
+    setInterval(reload, 10 * 60 * 1000);
+    setInterval(tick, 30 * 1000);
+})();
+</script>
+</body>
+</html>
